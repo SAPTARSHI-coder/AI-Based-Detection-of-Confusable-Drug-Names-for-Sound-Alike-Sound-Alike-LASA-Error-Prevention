@@ -133,12 +133,12 @@ def main():
         path = RAW_DIR / fname
         if path.exists():
             found = extract_from_pdf(path)
-            print(f"    → {len(found)} pairs extracted from {fname}")
+            print(f"    -> {len(found)} pairs extracted from {fname}")
             positives.update(found)
         else:
             print(f"  Warning: {fname} not found in {RAW_DIR}")
 
-    print(f"\n✓ Total positive LASA pairs: {len(positives)}")
+    print(f"\n> Total positive LASA pairs: {len(positives)}")
 
     # collect master drug list
     drug_set = set()
@@ -150,18 +150,18 @@ def main():
     with open(DRUG_LIST, "w", encoding="utf-8") as f:
         for d in sorted(drug_set):
             f.write(d + "\n")
-    print(f"✓ Master drug list saved ({len(drug_set)} drugs)")
+    print(f"> Master drug list saved ({len(drug_set)} drugs)")
 
     # save positive pairs
     pairs_path = PROC_DIR / "drug_pairs.csv"
     pd.DataFrame(list(positives), columns=["drug1", "drug2"]).to_csv(
         pairs_path, index=False
     )
-    print(f"✓ Positive pairs saved → {pairs_path.name}")
+    print(f"> Positive pairs saved -> {pairs_path.name}")
 
     # generate negatives
     negatives = generate_negatives(positives, list(drug_set))
-    print(f"✓ Negative samples generated: {len(negatives)}")
+    print(f"> Negative samples generated: {len(negatives)}")
 
     # build training dataset
     rows = [(d1, d2, 1) for d1, d2 in positives]
@@ -172,7 +172,7 @@ def main():
     pd.DataFrame(rows, columns=["drug1", "drug2", "label"]).to_csv(
         ds_path, index=False
     )
-    print(f"✓ Training dataset saved → {ds_path.name}  (total rows: {len(rows)})\n")
+    print(f"> Training dataset saved -> {ds_path.name}  (total rows: {len(rows)})\n")
 
 if __name__ == "__main__":
     main()
