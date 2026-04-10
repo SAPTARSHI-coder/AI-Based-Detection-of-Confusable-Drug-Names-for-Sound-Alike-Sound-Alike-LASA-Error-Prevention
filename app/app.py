@@ -71,7 +71,7 @@ def score_drug_local(query: str, top_n: int = 10):
     
     results = []
     for i, (c, p) in enumerate(zip(candidates, probs)):
-        feat_dict = dict(zip(feat_cols, rows[i]))
+        feat_dict = rows[i]
         ismp_flag = (query, c) in _ismp_pairs
         base_score = float(p)
         
@@ -99,7 +99,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 @app.post("/analyze")
 async def analyze(text: str = Form(...), diagnosis: str = Form("")):

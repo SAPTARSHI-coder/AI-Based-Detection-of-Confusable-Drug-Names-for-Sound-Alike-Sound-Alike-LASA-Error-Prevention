@@ -45,10 +45,17 @@ def decide(
     base_score = min(1.0, base_score)
 
     risk = "LOW"
-    if base_score > 0.75:
-        risk = "HIGH"
-    elif base_score > 0.45:
-        risk = "MEDIUM"
+    if mismatch:
+        if base_score > 0.75:
+            risk = "HIGH"
+        elif base_score > 0.45:
+            risk = "MEDIUM"
+    else:
+        # If no mismatch, only warn Medium if it's a known dangerous ISMP pair or STT is low
+        if (known_ismp or (stt_confidence and stt_confidence < 0.8)) and base_score > 0.8:
+            risk = "MEDIUM"
+        else:
+            risk = "LOW"
 
     # Explainability formulation
     reasons = []
@@ -69,10 +76,10 @@ def decide(
     if not reasons and not mismatch:
         reasons.append("No significant similarity or context mismatch detected.")
 
-    if top and base_score > 0.45:
-        message = f"! Risk of LASA confusion with '{top_match}' (Risk Score: {base_score:.0%})."
+    if top and risk != "LOW":
+        message = f"⚠ Caution: Potential LASA confusion with '{top_match}' (Similarity score: {base_score:.0%})."
     else:
-        message = "> No significant LASA risk."
+        message = "✅ Safe to administer. No significant LASA risk or context mismatch detected."
 
 
     return {
