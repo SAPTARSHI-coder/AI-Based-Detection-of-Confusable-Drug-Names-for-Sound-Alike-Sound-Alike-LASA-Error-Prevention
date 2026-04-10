@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LASA Drug Detector — Clinical Decision Support</title>
+  <meta name="description" content="AI-powered Look-Alike Sound-Alike (LASA) drug name detection system for clinical safety."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Design tokens ─────────────────────────────────────── */
+    :root {
+      --bg:         #0a0e1a;
+      --surface:    #111827;
+      --surface2:   #1a2235;
+      --border:     rgba(99,179,237,0.15);
+      --primary:    #3b82f6;
+      --primary-glow: rgba(59,130,246,0.35);
+      --accent:     #06b6d4;
+      --danger:     #ef4444;
+      --warning:    #f59e0b;
+      --success:    #10b981;
+      --text:       #e2e8f0;
+      --text-muted: #94a3b8;
+      --radius:     14px;
+      --mono:       'JetBrains Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background grid ──────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      padding: 32px 24px 24px;
+      text-align: center;
+      position: relative;
+    }
+    .logo-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .logo-badge::before {
+      content: '◉';
+      font-size: 10px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, #e2e8f0 30%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Main layout ─────────────────────────────────────────── */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* ── Tab switcher ────────────────────────────────────────── */
+    .tab-bar {
+      display: flex; gap: 8px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px;
+      margin-bottom: 28px;
+    }
+    .tab {
+      flex: 1; padding: 10px 16px;
+      border: none; border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: .9rem; font-weight: 500;
+      cursor: pointer;
+      color: var(--text-muted);
+      background: transparent;
+      transition: all .2s ease;
+    }
+    .tab.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 0 20px var(--primary-glow);
+    }
+    .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+    /* ── Card ────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      opacity: .6;
+    }
+
+    /* ── Forms ───────────────────────────────────────────────── */
+    label { display: block; font-size: .85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+    .field { margin-bottom: 20px; }
+
+    input[type=text], textarea, select, input[type=file] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: .95rem;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+    input[type=text]:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-glow);
+    }
+    textarea { resize: vertical; min-height: 90px; }
+
+    /* Diagnosis select */
+    select option { background: var(--surface2); }
+
+    /* File drop zone */
+    .file-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .file-zone:hover, .file-zone.active {
+      border-color: var(--primary);
+      background: rgba(59,130,246,.05);
+    }
+    .file-zone input { display: none; }
+    .file-zone .icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .file-zone .hint { font-size: .8rem; }
+    #file-name { margin-top: 10px; font-size:.85rem; color: var(--accent); }
+
+    /* ── Button ───────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px 28px;
+      border: none; border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: .95rem; font-weight: 600;
+      cursor: pointer;
+      transition: all .2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      width: 100%;
+      box-shadow: 0 4px 20px var(--primary-glow);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--primary-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading .spinner { display: block; }
+    .loading .btn-text { display: none; }
+
+    /* ── Risk badge ───────────────────────────────────────────── */
+    .risk-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: .8rem; font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .risk-HIGH   { background: rgba(239,68,68,.15);  color: var(--danger);  border: 1px solid rgba(239,68,68,.3); }
+    .risk-MEDIUM { background: rgba(245,158,11,.12); color: var(--warning); border: 1px solid rgba(245,158,11,.3);}
+    .risk-LOW    { background: rgba(16,185,129,.1);  color: var(--success); border: 1px solid rgba(16,185,129,.3);}
+    .risk-dot { width:8px; height:8px; border-radius:50%; background:currentColor; animation: pulse 1.5s infinite; }
+
+    /* ── Results area ────────────────────────────────────────── */
+    #result-area { display: none; }
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      margin-bottom: 20px;
+    }
+    .result-drug { font-size: 1.4rem; font-weight: 700; }
+    .result-drug span { color: var(--accent); }
+
+    .message-box {
+      background: var(--surface2);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 10px 10px 0;
+      padding: 14px 18px;
+      font-size: .9rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* LASA hits table */
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th { padding: 10px 14px; text-align: left; color: var(--text-muted); font-weight: 500; }
+    td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    tr:hover td { background: var(--surface2); }
+    td:first-child { font-family: var(--mono); font-size: .85rem; color: var(--accent); }
+
+    /* Probability bar */
+    .prob-bar-wrap { display: flex; align-items: center; gap: 10px; }
+    .prob-bar { flex: 1; height: 6px; background: var(--surface2); border-radius:3px; overflow:hidden; }
+    .prob-bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+    .prob-val { font-size:.8rem; color: var(--text-muted); width: 42px; text-align:right; }
+
+    /* Context mismatch box */
+    .mismatch-box {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: rgba(245,158,11,.08);
+      border: 1px solid rgba(245,158,11,.25);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: .87rem;
+      line-height: 1.5;
+      margin-top: 18px;
+    }
+    .mismatch-icon { font-size: 1.3rem; flex-shrink: 0; }
+
+    /* Transcript box */
+    .transcript-box {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: .83rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      border: 1px solid var(--border);
+    }
+    .transcript-label { font-size: .75rem; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+
+    /* Error box */
+    .error-box {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 10px;
+      padding: 16px;
+      color: var(--danger);
+      font-size: .9rem;
+      display: none;
+    }
+
+    /* Panel show/hide */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Footer */
+    footer { text-align:center; padding: 20px; color: var(--text-muted); font-size:.8rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-badge">AI Clinical Decision Support</div>
+  <h1>LASA Drug Detector</h1>
+  <p class="subtitle">
+    Look-Alike Sound-Alike drug name confusion detection, powered by machine learning.
+    Enter a clinical sentence or upload an audio clip to detect medication error risks.
+  </p>
+</header>
+
+<main>
+  <!-- Tabs -->
+  <div class="tab-bar" role="tablist">
+    <button class="tab active" id="tab-text" role="tab" onclick="switchTab('text')">📝 Text Analysis</button>
+    <button class="tab" id="tab-voice" role="tab" onclick="switchTab('voice')">🎙 Voice Analysis</button>
+  </div>
+
+  <!-- Text panel -->
+  <div class="panel active card" id="panel-text">
+    <form id="form-text" onsubmit="analyzeText(event)">
+      <div class="field">
+        <label for="sentence-input">Clinical sentence or drug name</label>
+        <textarea id="sentence-input" placeholder="e.g. Administer dopamine 5mg IV for the patient in bay 3…"></textarea>
+      </div>
+      <div class="field">
+        <label for="diagnosis-text">Patient diagnosis (optional)</label>
+        <select id="diagnosis-text">
+          <option value="">— Select diagnosis —</option>
+          <option value="cardiac_arrest">Cardiac Arrest</option>
+          <option value="hypertension">Hypertension</option>
+          <option value="atrial_fibrillation">Atrial Fibrillation</option>
+          <option value="diabetes">Diabetes</option>
+          <option value="pain">Pain Management</option>
+          <option value="infection">Infection / Sepsis</option>
+          <option value="anxiety">Anxiety / Seizure</option>
+          <option value="cancer">Oncology</option>
+          <option value="septic_shock">Septic Shock</option>
+          <option value="inflammation">Inflammation</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit" id="btn-text">
+        <span class="spinner"></span>
+        <span class="btn-text">🔍 Analyze for LASA Risk</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Voice panel -->
+  <div class="panel card" id="panel-voice">
+    <form id="form-voice" onsubmit="analyzeVoice(event)">
+      <div class="field">
+        <label>Provide audio input (Record or Upload)</label>
+        <div style="display:flex; gap:10px; margin-bottom: 12px; align-items:center;">
+          <button type="button" class="btn" id="btn-record" onclick="toggleRecording()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text);">
+            <span id="record-icon">🔴</span> <span id="record-text">Record Audio</span>
+          </button>
+          <span id="record-status" style="font-size:0.85rem; color:var(--danger); display:none; animation: pulse 1s infinite;">Recording...</span>
+        </div>
+        <div class="file-zone" id="drop-zone" onclick="document.getElementById('audio-input').click()">
+          <div class="icon">🎵</div>
+          <div>Drop audio file here or click to browse</div>
+          <div class="hint">Supported: WAV, MP3, M4A, OGG</div>
+          <input type="file" id="audio-input" accept=".wav,.mp3,.m4a,.ogg" onchange="fileChosen(this)"/>
+        </div>
+        <div id="file-name"></div>
+      </div>
+      <div class="field">
+        <label for="diagnosis-voice">Patient diagnosis (optional)</label>
+        <select id="diagnosis-voice">
+          <option value="">— Select diagnosis —</option>
+          <option value="cardiac_arrest">Cardiac Arrest</option>
+          <option value="hypertension">Hypertension</option>
+          <option value="atrial_fibrillation">Atrial Fibrillation</option>
+          <option value="diabetes">Diabetes</option>
+          <option value="pain">Pain Management</option>
+          <option value="infection">Infection / Sepsis</option>
+          <option value="anxiety">Anxiety / Seizure</option>
+          <option value="cancer">Oncology</option>
+          <option value="septic_shock">Septic Shock</option>
+          <option value="inflammation">Inflammation</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit" id="btn-voice" disabled>
+        <span class="spinner"></span>
+        <span class="btn-text">🎙 Transcribe & Analyze</span>
+      </button>
+    </form>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="error-box"></div>
+
+  <!-- Results -->
+  <div id="result-area">
+    <div class="card">
+      <div class="result-header">
+        <div>
+          <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Drug Detected</div>
+          <div class="result-drug">Drug: <span id="res-drug">—</span></div>
+        </div>
+        <div id="res-risk-badge" class="risk-badge risk-LOW"><span class="risk-dot"></span><span id="res-risk-label">LOW</span></div>
+      </div>
+
+      <div id="res-transcript-wrap" style="display:none">
+        <div class="transcript-label">Transcript</div>
+        <div class="transcript-box" id="res-transcript"></div>
+      </div>
+
+      <div class="message-box" id="res-message"></div>
+
+      <div id="res-reasons-wrap" style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:20px;">
+        <div style="font-size:.85rem;color:var(--text-muted);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Intelligent Risk Assessment</div>
+        <ul id="res-reasons-list" style="margin-left: 20px; font-size:.9rem; color:var(--text); line-height:1.6;"></ul>
+      </div>
+
+      <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Top LASA Matches</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Candidate Drug</th>
+            <th>Similarity Score</th>
+            <th>Risk</th>
+          </tr>
+        </thead>
+        <tbody id="res-table"></tbody>
+      </table>
+
+      <div id="res-context-wrap" class="mismatch-box" style="display:none">
+        <div class="mismatch-icon">⚠️</div>
+        <div id="res-context-msg"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>LASA Drug Detector v1.0 — For educational and research purposes only. Not for clinical use without validation.</footer>
+
+<script>
+  // ── Tab switching ────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('panel-' + tab).classList.add('active');
+    hideResult();
+  }
+
+  function hideResult() {
+    document.getElementById('result-area').style.display = 'none';
+    document.getElementById('error-box').style.display = 'none';
+  }
+
+  // ── File input ───────────────────────────────────────────────────────────
+  let recordedBlob = null;
+  function fileChosen(input) {
+    const name = input.files[0]?.name;
+    recordedBlob = null;
+    document.getElementById('file-name').textContent = name ? '📎 ' + name : '';
+    document.getElementById('btn-voice').disabled = !name;
+  }
+
+  let mediaRecorder;
+  let audioChunks = [];
+
+  async function toggleRecording() {
+      const btnIcon = document.getElementById('record-icon');
+      const btnText = document.getElementById('record-text');
+      const status  = document.getElementById('record-status');
+      const audioInput = document.getElementById('audio-input');
+      
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+          try {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+              mediaRecorder = new MediaRecorder(stream);
+              audioChunks = [];
+              
+              mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+              mediaRecorder.onstop = () => {
+                  recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                  document.getElementById('file-name').textContent = '📎 Recorded_Audio.webm';
+                  document.getElementById('btn-voice').disabled = false;
+                  audioInput.value = "";
+              };
+
+              mediaRecorder.start();
+              btnIcon.textContent = '⏹️';
+              btnText.textContent = 'Stop Recording';
+              status.style.display = 'inline';
+          } catch(err) {
+              alert('Error accessing microphone: ' + err.message);
+          }
+      } else if (mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          mediaRecorder.stream.getTracks().forEach(track => track.stop());
+          btnIcon.textContent = '🔴';
+          btnText.textContent = 'Record Audio';
+          status.style.display = 'none';
+      }
+  }
+
+  // ── Loading state ────────────────────────────────────────────────────────
+  function setLoading(btnId, on) {
+    const btn = document.getElementById(btnId);
+    if (on) btn.classList.add('loading');
+    else     btn.classList.remove('loading');
+    btn.disabled = on;
+  }
+
+  // ── Render results ───────────────────────────────────────────────────────
+  function renderResult(data) {
+    const d = data.decision;
+    document.getElementById('res-drug').textContent = data.drug || '—';
+
+    // risk badge
+    const badge = document.getElementById('res-risk-badge');
+    badge.className = 'risk-badge risk-' + d.risk_level;
+    document.getElementById('res-risk-label').textContent = d.risk_level;
+
+    // message
+    document.getElementById('res-message').textContent = d.message;
+
+    // transcript (voice only)
+    if (data.transcript) {
+      document.getElementById('res-transcript').textContent = data.transcript;
+      document.getElementById('res-transcript-wrap').style.display = 'block';
+    } else {
+      document.getElementById('res-transcript-wrap').style.display = 'none';
+    }
+
+    // LASA hits table
+    const tbody = document.getElementById('res-table');
+    tbody.innerHTML = '';
+    const hits = data.lasa_hits || [];
+    if (hits.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);text-align:center">No confusable drugs found in master list.</td></tr>';
+    }
+    hits.forEach(h => {
+      const prob   = h.lasa_prob;
+      const pct    = (prob * 100).toFixed(1) + '%';
+      const color  = prob > 0.75 ? 'var(--danger)' : prob > 0.45 ? 'var(--warning)' : 'var(--success)';
+      const row    = document.createElement('tr');
+      row.innerHTML = `
+        <td>${h.candidate}</td>
+        <td>
+          <div class="prob-bar-wrap">
+            <div class="prob-bar"><div class="prob-bar-fill" style="width:${pct};background:${color}"></div></div>
+            <div class="prob-val">${pct}</div>
+          </div>
+        </td>
+        <td><span class="risk-badge risk-${h.risk_level}" style="padding:3px 10px;font-size:.73rem">${h.risk_level}</span></td>`;
+      tbody.appendChild(row);
+    });
+
+    // Explainability Log
+    const rList = document.getElementById('res-reasons-list');
+    rList.innerHTML = '';
+    const reasons_arr = d.reasons || [];
+    reasons_arr.forEach(reason => {
+        const li = document.createElement('li');
+        li.textContent = reason;
+        rList.appendChild(li);
+    });
+
+    // context mismatch
+    const ctx = d.details?.context_result;
+    if (ctx?.mismatch) {
+      document.getElementById('res-context-msg').textContent = ctx.note;
+      document.getElementById('res-context-wrap').style.display = 'flex';
+    } else {
+      document.getElementById('res-context-wrap').style.display = 'none';
+    }
+
+    document.getElementById('result-area').style.display = 'block';
+    document.getElementById('result-area').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.textContent = '❌ ' + msg;
+    box.style.display = 'block';
+  }
+
+  // ── Text analysis ────────────────────────────────────────────────────────
+  async function analyzeText(e) {
+    e.preventDefault();
+    hideResult();
+    const text      = document.getElementById('sentence-input').value.trim();
+    const diagnosis = document.getElementById('diagnosis-text').value;
+    if (!text) { showError('Please enter a clinical sentence or drug name.'); return; }
+
+    setLoading('btn-text', true);
+    try {
+      const form = new FormData();
+      form.append('text', text);
+      form.append('diagnosis', diagnosis);
+      const res  = await fetch('/analyze', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Server error');
+      renderResult(data);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoading('btn-text', false);
+    }
+  }
+
+  // ── Voice analysis ───────────────────────────────────────────────────────
+  async function analyzeVoice(e) {
+    e.preventDefault();
+    hideResult();
+    const fileInput = document.getElementById('audio-input');
+    const diagnosis = document.getElementById('diagnosis-voice').value;
+    if (!fileInput.files[0] && !recordedBlob) { showError('Please select or record an audio file.'); return; }
+
+    setLoading('btn-voice', true);
+    try {
+      const form = new FormData();
+      if (recordedBlob) {
+          form.append('file', recordedBlob, 'recording.webm');
+      } else {
+          form.append('file', fileInput.files[0]);
+      }
+      form.append('diagnosis', diagnosis);
+      const res  = await fetch('/voice', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Server error');
+      renderResult(data);
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setLoading('btn-voice', false);
+    }
+  }
+
+  // ── Drag and drop ────────────────────────────────────────────────────────
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      const input = document.getElementById('audio-input');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      fileChosen(input);
+    }
+  });
+</script>
+</body>
+</html>

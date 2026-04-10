@@ -1,0 +1,17 @@
+pdfplumber
+pandas
+numpy
+rapidfuzz
+jellyfish
+scikit-learn
+xgboost
+joblib
+fastapi
+uvicorn
+matplotlib
+seaborn
+python-multipart
+jinja2
+tqdm
+openai-whisper
+soundfile
