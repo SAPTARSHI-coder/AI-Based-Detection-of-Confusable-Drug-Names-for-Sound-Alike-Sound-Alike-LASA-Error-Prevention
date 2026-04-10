@@ -60,7 +60,7 @@ def decide(
         if sim_pct > 80:
             reasons.append(f"{sim_pct:.0f}% high string similarity index.")
         if known_ismp:
-            reasons.append("⚠ Known historical LASA pair in ISMP dataset (High Risk).")
+            reasons.append("! Known historical LASA pair in ISMP dataset (High Risk).")
         reasons.append(f"Base model probability calculated at {lasa_prob:.0%}.")
 
     if mismatch:
@@ -70,9 +70,9 @@ def decide(
         reasons.append("No significant similarity or context mismatch detected.")
 
     if top and base_score > 0.45:
-        message = f"⚠ Risk of LASA confusion with '{top_match}' (Risk Score: {base_score:.0%})."
+        message = f"! Risk of LASA confusion with '{top_match}' (Risk Score: {base_score:.0%})."
     else:
-        message = "✓ No significant LASA risk."
+        message = "> No significant LASA risk."
 
 
     return {
