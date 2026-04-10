@@ -1,394 +1,771 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>LASA Drug Detector — Clinical Decision Support</title>
-  <meta name="description" content="AI-powered Look-Alike Sound-Alike (LASA) drug name detection system for clinical safety."/>
+  <title>LASA::DETECT — AI Clinical Decision Support</title>
+  <meta name="description" content="AI-powered LASA drug name confusion detection for clinical safety."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
-    /* ── Design tokens ─────────────────────────────────────── */
     :root {
-      --bg:         #0a0e1a;
-      --surface:    #111827;
-      --surface2:   #1a2235;
-      --border:     rgba(99,179,237,0.15);
-      --primary:    #3b82f6;
-      --primary-glow: rgba(59,130,246,0.35);
-      --accent:     #06b6d4;
-      --danger:     #ef4444;
-      --warning:    #f59e0b;
-      --success:    #10b981;
-      --text:       #e2e8f0;
-      --text-muted: #94a3b8;
-      --radius:     14px;
-      --mono:       'JetBrains Mono', monospace;
+      --bg:         #020b02;
+      --bg2:        #030f03;
+      --surface:    #061306;
+      --surface2:   #0a1f0a;
+      --surface3:   #0f2b0f;
+      --neon:       #00ff41;
+      --neon-dim:   #00c832;
+      --neon-glow:  rgba(0,255,65,0.18);
+      --neon-glow2: rgba(0,255,65,0.06);
+      --neon-faint: rgba(0,255,65,0.03);
+      --danger:     #ff2244;
+      --danger-glow:rgba(255,34,68,0.2);
+      --warning:    #ffaa00;
+      --warn-glow:  rgba(255,170,0,0.18);
+      --safe:       #00ff41;
+      --safe-glow:  rgba(0,255,65,0.18);
+      --text:       #c8ffc8;
+      --text-dim:   #4a8a4a;
+      --text-muted: #2d5c2d;
+      --mono:       'JetBrains Mono', 'Share Tech Mono', monospace;
+      --title:      'Orbitron', monospace;
+      --border:     rgba(0,255,65,0.12);
+      --border-bright: rgba(0,255,65,0.35);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { scroll-behavior: smooth; }
+
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: var(--mono);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
+      position: relative;
     }
 
-    /* ── Animated background grid ──────────────────────────── */
+    /* ── Matrix rain canvas ─────────────────────────────────── */
+    #matrix-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      opacity: 0.04;
+      z-index: 0;
+    }
+
+    /* ── Scanlines overlay ──────────────────────────────────── */
     body::before {
       content: '';
       position: fixed; inset: 0;
-      background:
-        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.15) 2px,
+        rgba(0,0,0,0.15) 4px
+      );
       pointer-events: none;
+      z-index: 1;
     }
+
+    /* ── Grid overlay ───────────────────────────────────────── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        linear-gradient(var(--neon-faint) 1px, transparent 1px),
+        linear-gradient(90deg, var(--neon-faint) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── All content above overlays ─────────────────────────── */
+    header, main, footer { position: relative; z-index: 2; }
 
     /* ── Header ─────────────────────────────────────────────── */
     header {
-      padding: 32px 24px 24px;
+      padding: 40px 24px 28px;
       text-align: center;
-      position: relative;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0,255,65,0.04) 0%, transparent 100%);
     }
-    .logo-badge {
-      display: inline-flex; align-items: center; gap: 10px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: 12px;
-      color: var(--accent);
-      letter-spacing: .08em;
+
+    .sys-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--neon-dim);
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(0,255,65,0.2);
+      padding: 5px 14px;
+      border-radius: 2px;
+      background: rgba(0,255,65,0.04);
     }
-    .logo-badge::before {
-      content: '◉';
-      font-size: 10px;
-      animation: pulse 2s infinite;
+    .sys-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--neon);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--neon);
+      animation: blink 1.2s step-end infinite;
     }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
     h1 {
-      font-size: clamp(2rem, 5vw, 3.2rem);
-      font-weight: 700;
-      background: linear-gradient(135deg, #e2e8f0 30%, var(--accent) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      line-height: 1.2;
-      margin-bottom: 12px;
+      font-family: var(--title);
+      font-size: clamp(1.8rem, 5vw, 3rem);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: var(--neon);
+      text-shadow:
+        0 0 10px var(--neon),
+        0 0 30px rgba(0,255,65,0.5),
+        0 0 60px rgba(0,255,65,0.2);
+      margin-bottom: 6px;
+      line-height: 1.1;
+    }
+    .h1-sub {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
     }
     .subtitle {
-      color: var(--text-muted);
-      font-size: 1rem;
-      max-width: 540px;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      max-width: 560px;
       margin: 0 auto;
-      line-height: 1.6;
+      line-height: 1.7;
+      letter-spacing: 0.02em;
     }
+    .subtitle strong { color: var(--neon-dim); }
+
+    /* ── Status bar ─────────────────────────────────────────── */
+    .status-bar {
+      display: flex; align-items: center; justify-content: center; gap: 28px;
+      margin-top: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+    }
+    .status-item { display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--neon); box-shadow: 0 0 6px var(--neon); animation: blink 2s step-end infinite; }
+    .status-dot.warn { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
 
     /* ── Main layout ─────────────────────────────────────────── */
     main {
-      max-width: 900px;
+      max-width: 960px;
       margin: 0 auto;
-      padding: 24px 20px 60px;
+      padding: 32px 20px 80px;
     }
 
-    /* ── Tab switcher ────────────────────────────────────────── */
+    /* ── Terminal prompt line ────────────────────────────────── */
+    .prompt-line {
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .prompt-line::before { content: '$ '; color: var(--neon); font-weight: 500; }
+    .cursor-blink { display: inline-block; width: 8px; height: 13px; background: var(--neon); animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+
+    /* ── Tab bar ─────────────────────────────────────────────── */
     .tab-bar {
-      display: flex; gap: 8px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 6px;
-      margin-bottom: 28px;
+      display: flex; gap: 0;
+      margin-bottom: 0;
+      border-bottom: 1px solid var(--border-bright);
     }
     .tab {
-      flex: 1; padding: 10px 16px;
-      border: none; border-radius: 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: .9rem; font-weight: 500;
+      flex: 1; padding: 12px 20px;
+      border: none;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 500;
       cursor: pointer;
       color: var(--text-muted);
       background: transparent;
-      transition: all .2s ease;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: all 0.15s;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      position: relative;
     }
+    .tab:hover:not(.active) { color: var(--neon-dim); background: var(--neon-faint); }
     .tab.active {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 0 20px var(--primary-glow);
+      color: var(--neon);
+      background: rgba(0,255,65,0.05);
+      border-bottom: 2px solid var(--neon);
+      text-shadow: 0 0 10px rgba(0,255,65,0.5);
     }
-    .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
 
     /* ── Card ────────────────────────────────────────────────── */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px;
-      margin-bottom: 24px;
+      border-top: none;
+      padding: 28px 28px 24px;
       position: relative;
-      overflow: hidden;
+      margin-bottom: 20px;
     }
-    .card::before {
+    .card::after {
       content: '';
-      position: absolute; top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--primary), var(--accent));
-      opacity: .6;
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--neon), transparent);
+      opacity: 0.4;
     }
+
+    /* Section label */
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::before { content: '//'; color: var(--neon-dim); font-weight: bold; }
 
     /* ── Forms ───────────────────────────────────────────────── */
-    label { display: block; font-size: .85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
-    .field { margin-bottom: 20px; }
+    .field { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    label span { color: var(--neon-dim); }
 
-    input[type=text], textarea, select, input[type=file] {
+    textarea, select {
       width: 100%;
-      background: var(--surface2);
+      background: var(--bg2);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 0;
       padding: 12px 16px;
       color: var(--text);
-      font-family: 'Inter', sans-serif;
-      font-size: .95rem;
-      transition: border-color .2s, box-shadow .2s;
+      font-family: var(--mono);
+      font-size: 0.88rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
       outline: none;
+      resize: vertical;
+      min-height: 90px;
+      line-height: 1.6;
     }
-    input[type=text]:focus, textarea:focus, select:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px var(--primary-glow);
+    select { min-height: unset; resize: none; }
+    textarea:focus, select:focus {
+      border-color: var(--neon-dim);
+      box-shadow: 0 0 0 1px rgba(0,255,65,0.15), inset 0 0 20px rgba(0,255,65,0.03);
+      color: var(--neon);
     }
-    textarea { resize: vertical; min-height: 90px; }
-
-    /* Diagnosis select */
-    select option { background: var(--surface2); }
+    textarea::placeholder { color: var(--text-muted); }
+    select option { background: #0a1f0a; color: var(--text); }
 
     /* File drop zone */
     .file-zone {
-      border: 2px dashed var(--border);
-      border-radius: 12px;
-      padding: 32px;
+      border: 1px dashed var(--border-bright);
+      padding: 28px;
       text-align: center;
-      color: var(--text-muted);
+      color: var(--text-dim);
       cursor: pointer;
-      transition: border-color .2s, background .2s;
+      transition: all 0.2s;
+      background: var(--neon-faint);
+      position: relative;
     }
     .file-zone:hover, .file-zone.active {
-      border-color: var(--primary);
-      background: rgba(59,130,246,.05);
+      border-color: var(--neon);
+      background: rgba(0,255,65,0.05);
+      color: var(--neon);
     }
     .file-zone input { display: none; }
-    .file-zone .icon { font-size: 2.5rem; margin-bottom: 8px; }
-    .file-zone .hint { font-size: .8rem; }
-    #file-name { margin-top: 10px; font-size:.85rem; color: var(--accent); }
+    .file-zone .fz-icon { font-size: 2rem; margin-bottom: 8px; filter: hue-rotate(100deg); }
+    .file-zone .fz-hint { font-size: 11px; letter-spacing: 0.1em; margin-top: 6px; color: var(--text-muted); }
+    #file-name {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--neon-dim);
+      letter-spacing: 0.08em;
+    }
 
-    /* ── Button ───────────────────────────────────────────────── */
+    /* ── Buttons ────────────────────────────────────────────── */
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
       padding: 13px 28px;
-      border: none; border-radius: 10px;
-      font-family: 'Inter', sans-serif;
-      font-size: .95rem; font-weight: 600;
+      border: none;
+      font-family: var(--title);
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
       cursor: pointer;
-      transition: all .2s ease;
+      transition: all 0.2s;
       position: relative;
       overflow: hidden;
     }
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      color: #fff;
+      background: transparent;
+      color: var(--neon);
+      border: 1px solid var(--neon);
       width: 100%;
-      box-shadow: 0 4px 20px var(--primary-glow);
+      box-shadow: 0 0 20px var(--neon-glow), inset 0 0 20px var(--neon-glow2);
+      text-shadow: 0 0 10px var(--neon);
     }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--primary-glow); }
+    .btn-primary::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, var(--neon-glow), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 40px var(--neon-glow), inset 0 0 30px rgba(0,255,65,0.1); transform: translateY(-1px); }
+    .btn-primary:hover::before { opacity: 1; }
     .btn-primary:active { transform: translateY(0); }
-    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation: spin .7s linear infinite; }
+    .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      padding: 10px 18px;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+    }
+    .btn-secondary:hover { border-color: var(--neon-dim); color: var(--neon-dim); }
+
+    .spinner {
+      display: none;
+      width: 16px; height: 16px;
+      border: 1px solid rgba(0,255,65,0.3);
+      border-top-color: var(--neon);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
     .loading .spinner { display: block; }
     .loading .btn-text { display: none; }
 
-    /* ── Risk badge ───────────────────────────────────────────── */
-    .risk-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 6px 16px;
-      border-radius: 999px;
-      font-size: .8rem; font-weight: 700;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-    }
-    .risk-HIGH   { background: rgba(239,68,68,.15);  color: var(--danger);  border: 1px solid rgba(239,68,68,.3); }
-    .risk-MEDIUM { background: rgba(245,158,11,.12); color: var(--warning); border: 1px solid rgba(245,158,11,.3);}
-    .risk-LOW    { background: rgba(16,185,129,.1);  color: var(--success); border: 1px solid rgba(16,185,129,.3);}
-    .risk-dot { width:8px; height:8px; border-radius:50%; background:currentColor; animation: pulse 1.5s infinite; }
-
-    /* ── Results area ────────────────────────────────────────── */
+    /* ── Result area ────────────────────────────────────────── */
     #result-area { display: none; }
-    .result-header {
+
+    /* Terminal output card */
+    .terminal-card {
+      background: var(--bg2);
+      border: 1px solid var(--border-bright);
+      position: relative;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .terminal-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--neon), transparent);
+    }
+    .terminal-titlebar {
       display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px;
+      padding: 10px 16px;
+      background: var(--surface3);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+    }
+    .terminal-dots { display: flex; gap: 6px; }
+    .terminal-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .terminal-body { padding: 20px 20px 16px; }
+
+    /* Risk level display */
+    .risk-display {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 16px;
       margin-bottom: 20px;
     }
-    .result-drug { font-size: 1.4rem; font-weight: 700; }
-    .result-drug span { color: var(--accent); }
+    .drug-name-display {
+      font-family: var(--title);
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--neon);
+      text-shadow: 0 0 20px rgba(0,255,65,0.5);
+      letter-spacing: 0.08em;
+    }
+    .drug-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
 
-    .message-box {
-      background: var(--surface2);
-      border-left: 3px solid var(--primary);
-      border-radius: 0 10px 10px 0;
-      padding: 14px 18px;
-      font-size: .9rem;
-      line-height: 1.6;
+    .risk-badge {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px;
+      font-family: var(--title);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      border: 1px solid;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    }
+    .risk-HIGH {
+      background: rgba(255,34,68,0.1);
+      color: var(--danger);
+      border-color: rgba(255,34,68,0.4);
+      box-shadow: 0 0 20px rgba(255,34,68,0.15), inset 0 0 20px rgba(255,34,68,0.05);
+      text-shadow: 0 0 10px var(--danger);
+      animation: flash-danger 2s ease-in-out infinite;
+    }
+    @keyframes flash-danger { 0%,100%{box-shadow:0 0 20px rgba(255,34,68,0.15)} 50%{box-shadow:0 0 40px rgba(255,34,68,0.4)} }
+    .risk-MEDIUM {
+      background: rgba(255,170,0,0.1);
+      color: var(--warning);
+      border-color: rgba(255,170,0,0.4);
+      box-shadow: 0 0 20px var(--warn-glow);
+      text-shadow: 0 0 10px var(--warning);
+    }
+    .risk-LOW {
+      background: rgba(0,255,65,0.06);
+      color: var(--neon);
+      border-color: var(--border-bright);
+      box-shadow: 0 0 20px var(--neon-glow);
+      text-shadow: 0 0 10px var(--neon);
+    }
+    .risk-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      animation: blink 1.2s step-end infinite;
+    }
+
+    /* Message box */
+    .msg-box {
+      border-left: 2px solid var(--border-bright);
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      line-height: 1.7;
       margin-bottom: 20px;
+      color: var(--text-dim);
+      background: rgba(0,255,65,0.02);
+      letter-spacing: 0.02em;
+    }
+    .msg-box.high { border-left-color: var(--danger); background: rgba(255,34,68,0.03); color: #ff7788; }
+    .msg-box.medium { border-left-color: var(--warning); background: rgba(255,170,0,0.03); color: #ffcc66; }
+
+    /* Reasons log */
+    .log-block {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 14px 16px;
+      margin-bottom: 20px;
+    }
+    .log-title {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .log-entry {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 0.83rem;
+      line-height: 1.6;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+      padding-left: 4px;
+    }
+    .log-entry::before { content: '>'; color: var(--neon-dim); flex-shrink: 0; }
+
+    /* Transcript box */
+    .transcript-wrap { margin-bottom: 18px; display: none; }
+    .transcript-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .transcript-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
     }
 
     /* LASA hits table */
-    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
-    thead tr { border-bottom: 1px solid var(--border); }
-    th { padding: 10px 14px; text-align: left; color: var(--text-muted); font-weight: 500; }
-    td { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
-    tr:hover td { background: var(--surface2); }
-    td:first-child { font-family: var(--mono); font-size: .85rem; color: var(--accent); }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.83rem;
+    }
+    thead tr {
+      border-bottom: 1px solid var(--border-bright);
+    }
+    th {
+      padding: 8px 14px;
+      text-align: left;
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid rgba(0,255,65,0.04);
+      font-family: var(--mono);
+    }
+    tr:hover td { background: rgba(0,255,65,0.03); }
+    td:first-child { color: var(--neon-dim); letter-spacing: 0.06em; }
 
     /* Probability bar */
     .prob-bar-wrap { display: flex; align-items: center; gap: 10px; }
-    .prob-bar { flex: 1; height: 6px; background: var(--surface2); border-radius:3px; overflow:hidden; }
-    .prob-bar-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
-    .prob-val { font-size:.8rem; color: var(--text-muted); width: 42px; text-align:right; }
+    .prob-bar {
+      flex: 1; height: 4px;
+      background: var(--surface3);
+      border-radius: 0;
+      overflow: hidden;
+    }
+    .prob-bar-fill {
+      height: 100%;
+      transition: width 0.8s ease;
+      position: relative;
+    }
+    .prob-bar-fill::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: currentColor;
+      filter: blur(2px);
+    }
+    .prob-val { font-size: 11px; color: var(--text-muted); width: 44px; text-align: right; }
 
-    /* Context mismatch box */
+    /* Context mismatch */
     .mismatch-box {
-      display: flex; align-items: flex-start; gap: 12px;
-      background: rgba(245,158,11,.08);
-      border: 1px solid rgba(245,158,11,.25);
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: .87rem;
-      line-height: 1.5;
-      margin-top: 18px;
+      display: none;
+      align-items: flex-start; gap: 12px;
+      background: rgba(255,170,0,0.05);
+      border: 1px solid rgba(255,170,0,0.25);
+      padding: 14px 16px;
+      font-size: 0.83rem;
+      line-height: 1.6;
+      margin-top: 16px;
+      color: #cc8800;
     }
-    .mismatch-icon { font-size: 1.3rem; flex-shrink: 0; }
-
-    /* Transcript box */
-    .transcript-box {
-      background: var(--surface2);
-      border-radius: 10px;
-      padding: 12px 16px;
-      font-family: var(--mono);
-      font-size: .83rem;
-      color: var(--text-muted);
-      margin-bottom: 18px;
-      border: 1px solid var(--border);
-    }
-    .transcript-label { font-size: .75rem; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .08em; }
+    .mismatch-icon { flex-shrink: 0; font-size: 1rem; }
 
     /* Error box */
     .error-box {
-      background: rgba(239,68,68,.08);
-      border: 1px solid rgba(239,68,68,.3);
-      border-radius: 10px;
-      padding: 16px;
+      background: rgba(255,34,68,0.06);
+      border: 1px solid rgba(255,34,68,0.3);
+      padding: 14px 16px;
       color: var(--danger);
-      font-size: .9rem;
+      font-size: 0.85rem;
       display: none;
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
     }
+    .error-box::before { content: 'ERROR :: '; opacity: 0.6; }
 
-    /* Panel show/hide */
+    /* Panel */
     .panel { display: none; }
     .panel.active { display: block; }
 
-    /* Footer */
-    footer { text-align:center; padding: 20px; color: var(--text-muted); font-size:.8rem; }
+    /* Quick examples */
+    .examples-bar {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 20px;
+    }
+    .example-chip {
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      transition: all 0.15s;
+      border-radius: 0;
+    }
+    .example-chip:hover {
+      border-color: var(--neon-dim);
+      color: var(--neon-dim);
+      background: var(--neon-faint);
+    }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 18px 24px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      background: rgba(0,0,0,0.3);
+    }
+    footer span { color: var(--neon-dim); }
+
+    /* ── Scrollbar ───────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 0; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--neon-dim); }
+
+    /* ── Typing animation ───────────────────────────────────── */
+    @keyframes typewrite {
+      from { width: 0; }
+      to   { width: 100%; }
+    }
+    .typewrite {
+      overflow: hidden;
+      white-space: nowrap;
+      animation: typewrite 1.2s steps(40, end) forwards;
+    }
   </style>
 </head>
 <body>
 
+<!-- Matrix rain canvas -->
+<canvas id="matrix-canvas"></canvas>
+
 <header>
-  <div class="logo-badge">AI Clinical Decision Support</div>
-  <h1>LASA Drug Detector</h1>
+  <div class="sys-badge">LASA::DETECT v1.0 — CLINICAL AI SYSTEM</div>
+  <h1>LASA·DETECT</h1>
+  <div class="h1-sub">Look-Alike Sound-Alike Medication Error Prevention Engine</div>
   <p class="subtitle">
-    Look-Alike Sound-Alike drug name confusion detection, powered by machine learning.
-    Enter a clinical sentence or upload an audio clip to detect medication error risks.
+    AI-powered real-time clinical decision support. Input a <strong>drug name</strong> or full
+    clinical sentence — the system extracts, classifies, and risk-stratifies potential LASA confusion
+    events against a trained Random Forest model.
   </p>
+  <div class="status-bar">
+    <div class="status-item">
+      <span class="status-dot"></span>
+      SYSTEM ONLINE
+    </div>
+    <div class="status-item">
+      <span class="status-dot"></span>
+      ML MODEL LOADED
+    </div>
+    <div class="status-item">
+      <span class="status-dot warn"></span>
+      FOR RESEARCH USE ONLY
+    </div>
+  </div>
 </header>
 
 <main>
+  <div class="prompt-line">
+    lasa_detect --mode interactive --model models/lasa_classifier.pkl<span class="cursor-blink"></span>
+  </div>
+
   <!-- Tabs -->
   <div class="tab-bar" role="tablist">
-    <button class="tab active" id="tab-text" role="tab" onclick="switchTab('text')">📝 Text Analysis</button>
-    <button class="tab" id="tab-voice" role="tab" onclick="switchTab('voice')">🎙 Voice Analysis</button>
+    <button class="tab active" id="tab-text" role="tab" onclick="switchTab('text')">[ TEXT ANALYSIS ]</button>
+    <button class="tab" id="tab-voice" role="tab" onclick="switchTab('voice')">[ VOICE ANALYSIS ]</button>
   </div>
 
   <!-- Text panel -->
   <div class="panel active card" id="panel-text">
+    <div class="section-label">INPUT_PARAMETERS</div>
+
+    <div class="examples-bar" id="examples">
+      <button class="example-chip" onclick="setExample('Push 500mg of metformin immediately.', 'diabetes')">SAFE: metformin/diabetes</button>
+      <button class="example-chip" onclick="setExample('Start a drip of hydralazine.', 'anxiety')">RISK: hydralazine/anxiety</button>
+      <button class="example-chip" onclick="setExample('Administer 25mg hydroxyzine IV.', 'anxiety')">TEST: hydroxyzine/anxiety</button>
+      <button class="example-chip" onclick="setExample('Give vincristine 2mg IV bolus.', 'cancer')">TEST: vincristine/cancer</button>
+    </div>
+
     <form id="form-text" onsubmit="analyzeText(event)">
       <div class="field">
-        <label for="sentence-input">Clinical sentence or drug name</label>
-        <textarea id="sentence-input" placeholder="e.g. Administer dopamine 5mg IV for the patient in bay 3…"></textarea>
+        <label for="sentence-input">clinical_sentence <span>//  or just the drug name</span></label>
+        <textarea id="sentence-input" placeholder="e.g.  Administer dopamine 5mg IV push for cardiac arrest..."></textarea>
       </div>
       <div class="field">
-        <label for="diagnosis-text">Patient diagnosis (optional)</label>
+        <label for="diagnosis-text">patient_diagnosis <span>//  optional context layer</span></label>
         <select id="diagnosis-text">
-          <option value="">— Select diagnosis —</option>
-          <option value="cardiac_arrest">Cardiac Arrest</option>
-          <option value="hypertension">Hypertension</option>
-          <option value="atrial_fibrillation">Atrial Fibrillation</option>
-          <option value="diabetes">Diabetes</option>
-          <option value="pain">Pain Management</option>
-          <option value="infection">Infection / Sepsis</option>
-          <option value="anxiety">Anxiety / Seizure</option>
-          <option value="cancer">Oncology</option>
-          <option value="septic_shock">Septic Shock</option>
-          <option value="inflammation">Inflammation</option>
+          <option value="">-- NULL (no context) --</option>
+          <option value="cardiac_arrest">CARDIAC_ARREST</option>
+          <option value="hypertension">HYPERTENSION</option>
+          <option value="atrial_fibrillation">ATRIAL_FIBRILLATION</option>
+          <option value="diabetes">DIABETES</option>
+          <option value="pain">PAIN_MANAGEMENT</option>
+          <option value="infection">INFECTION // SEPSIS</option>
+          <option value="anxiety">ANXIETY // SEIZURE</option>
+          <option value="cancer">ONCOLOGY</option>
+          <option value="septic_shock">SEPTIC_SHOCK</option>
+          <option value="heart_failure">HEART_FAILURE</option>
         </select>
       </div>
       <button class="btn btn-primary" type="submit" id="btn-text">
         <span class="spinner"></span>
-        <span class="btn-text">🔍 Analyze for LASA Risk</span>
+        <span class="btn-text">EXECUTE ANALYSIS</span>
       </button>
     </form>
   </div>
 
   <!-- Voice panel -->
   <div class="panel card" id="panel-voice">
+    <div class="section-label">AUDIO_INPUT</div>
     <form id="form-voice" onsubmit="analyzeVoice(event)">
       <div class="field">
-        <label>Provide audio input (Record or Upload)</label>
-        <div style="display:flex; gap:10px; margin-bottom: 12px; align-items:center;">
-          <button type="button" class="btn" id="btn-record" onclick="toggleRecording()" style="background:var(--surface2); border:1px solid var(--border); color:var(--text);">
-            <span id="record-icon">🔴</span> <span id="record-text">Record Audio</span>
+        <label>audio_source <span>//  record or upload</span></label>
+        <div style="display:flex; gap:10px; margin-bottom:12px; align-items:center;">
+          <button type="button" class="btn btn-secondary" id="btn-record" onclick="toggleRecording()">
+            <span id="record-icon">●</span> <span id="record-text">RECORD AUDIO</span>
           </button>
-          <span id="record-status" style="font-size:0.85rem; color:var(--danger); display:none; animation: pulse 1s infinite;">Recording...</span>
+          <span id="record-status" style="font-size:11px; color:var(--danger); display:none; letter-spacing:0.15em; animation:blink 1s step-end infinite;">⬤ RECORDING...</span>
         </div>
         <div class="file-zone" id="drop-zone" onclick="document.getElementById('audio-input').click()">
-          <div class="icon">🎵</div>
-          <div>Drop audio file here or click to browse</div>
-          <div class="hint">Supported: WAV, MP3, M4A, OGG</div>
+          <div class="fz-icon">🎙</div>
+          <div style="font-size:0.85rem; letter-spacing:0.08em;">DROP AUDIO FILE OR CLICK TO BROWSE</div>
+          <div class="fz-hint">SUPPORTED FORMATS: WAV · MP3 · M4A · OGG</div>
           <input type="file" id="audio-input" accept=".wav,.mp3,.m4a,.ogg" onchange="fileChosen(this)"/>
         </div>
         <div id="file-name"></div>
       </div>
       <div class="field">
-        <label for="diagnosis-voice">Patient diagnosis (optional)</label>
+        <label for="diagnosis-voice">patient_diagnosis <span>//  optional</span></label>
         <select id="diagnosis-voice">
-          <option value="">— Select diagnosis —</option>
-          <option value="cardiac_arrest">Cardiac Arrest</option>
-          <option value="hypertension">Hypertension</option>
-          <option value="atrial_fibrillation">Atrial Fibrillation</option>
-          <option value="diabetes">Diabetes</option>
-          <option value="pain">Pain Management</option>
-          <option value="infection">Infection / Sepsis</option>
-          <option value="anxiety">Anxiety / Seizure</option>
-          <option value="cancer">Oncology</option>
-          <option value="septic_shock">Septic Shock</option>
-          <option value="inflammation">Inflammation</option>
+          <option value="">-- NULL --</option>
+          <option value="cardiac_arrest">CARDIAC_ARREST</option>
+          <option value="hypertension">HYPERTENSION</option>
+          <option value="atrial_fibrillation">ATRIAL_FIBRILLATION</option>
+          <option value="diabetes">DIABETES</option>
+          <option value="pain">PAIN_MANAGEMENT</option>
+          <option value="infection">INFECTION // SEPSIS</option>
+          <option value="anxiety">ANXIETY // SEIZURE</option>
+          <option value="cancer">ONCOLOGY</option>
+          <option value="septic_shock">SEPTIC_SHOCK</option>
+          <option value="heart_failure">HEART_FAILURE</option>
         </select>
       </div>
       <button class="btn btn-primary" type="submit" id="btn-voice" disabled>
         <span class="spinner"></span>
-        <span class="btn-text">🎙 Transcribe & Analyze</span>
+        <span class="btn-text">TRANSCRIBE &amp; ANALYZE</span>
       </button>
     </form>
   </div>
@@ -398,262 +775,341 @@
 
   <!-- Results -->
   <div id="result-area">
-    <div class="card">
-      <div class="result-header">
-        <div>
-          <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Drug Detected</div>
-          <div class="result-drug">Drug: <span id="res-drug">—</span></div>
+    <div class="terminal-card">
+      <div class="terminal-titlebar">
+        <div class="terminal-dots">
+          <span></span><span></span><span></span>
         </div>
-        <div id="res-risk-badge" class="risk-badge risk-LOW"><span class="risk-dot"></span><span id="res-risk-label">LOW</span></div>
+        <span>LASA_ANALYSIS_OUTPUT.json</span>
+        <span id="res-timestamp" style="color:var(--neon-dim)"></span>
       </div>
+      <div class="terminal-body">
 
-      <div id="res-transcript-wrap" style="display:none">
-        <div class="transcript-label">Transcript</div>
-        <div class="transcript-box" id="res-transcript"></div>
-      </div>
+        <!-- Transcript (voice only) -->
+        <div class="transcript-wrap" id="res-transcript-wrap">
+          <div class="transcript-label">// WHISPER_TRANSCRIPT</div>
+          <div class="transcript-box" id="res-transcript"></div>
+        </div>
 
-      <div class="message-box" id="res-message"></div>
+        <!-- Drug + risk level -->
+        <div class="risk-display">
+          <div>
+            <div class="drug-label">// DRUG_IDENTIFIED</div>
+            <div class="drug-name-display" id="res-drug">—</div>
+          </div>
+          <div class="risk-badge risk-LOW" id="res-risk-badge">
+            <span class="risk-dot"></span>
+            <span id="res-risk-label">—</span>
+          </div>
+        </div>
 
-      <div id="res-reasons-wrap" style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:20px;">
-        <div style="font-size:.85rem;color:var(--text-muted);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Intelligent Risk Assessment</div>
-        <ul id="res-reasons-list" style="margin-left: 20px; font-size:.9rem; color:var(--text); line-height:1.6;"></ul>
-      </div>
+        <!-- Message -->
+        <div class="msg-box" id="res-message"></div>
 
-      <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px;font-weight:500;text-transform:uppercase;letter-spacing:.05em">Top LASA Matches</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Candidate Drug</th>
-            <th>Similarity Score</th>
-            <th>Risk</th>
-          </tr>
-        </thead>
-        <tbody id="res-table"></tbody>
-      </table>
+        <!-- Reasons log -->
+        <div class="log-block">
+          <div class="log-title">// RISK_ASSESSMENT_LOG</div>
+          <div id="res-reasons-list"></div>
+        </div>
 
-      <div id="res-context-wrap" class="mismatch-box" style="display:none">
-        <div class="mismatch-icon">⚠️</div>
-        <div id="res-context-msg"></div>
+        <!-- LASA hits table -->
+        <div class="section-label" style="margin-top:4px;">TOP_LASA_MATCHES</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Candidate Drug</th>
+                <th>LASA Similarity</th>
+                <th>Risk Level</th>
+                <th>ISMP Listed</th>
+              </tr>
+            </thead>
+            <tbody id="res-table"></tbody>
+          </table>
+        </div>
+
+        <!-- Context mismatch -->
+        <div class="mismatch-box" id="res-context-wrap">
+          <span class="mismatch-icon">⚠</span>
+          <div id="res-context-msg"></div>
+        </div>
+
       </div>
     </div>
   </div>
+
 </main>
 
-<footer>LASA Drug Detector v1.0 — For educational and research purposes only. Not for clinical use without validation.</footer>
+<footer>
+  LASA::DETECT v1.0 &nbsp;|&nbsp; <span>AI Clinical Decision Support</span> &nbsp;|&nbsp;
+  NOT VALIDATED FOR CLINICAL USE &nbsp;|&nbsp; FOR RESEARCH &amp; EDUCATION ONLY
+</footer>
 
 <script>
-  // ── Tab switching ────────────────────────────────────────────────────────
-  function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
-    document.getElementById('panel-' + tab).classList.add('active');
-    hideResult();
+// ── Matrix Rain ────────────────────────────────────────────────────────────────
+(function(){
+  const canvas = document.getElementById('matrix-canvas');
+  const ctx    = canvas.getContext('2d');
+  let cols, drops;
+  const chars  = '01アイウエオカキクケコサシスセソACGTMLDB><{}[]|=+-*/'.split('');
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    cols  = Math.floor(canvas.width / 18);
+    drops = Array(cols).fill(1);
   }
+  resize();
+  window.addEventListener('resize', resize);
 
-  function hideResult() {
-    document.getElementById('result-area').style.display = 'none';
-    document.getElementById('error-box').style.display = 'none';
-  }
-
-  // ── File input ───────────────────────────────────────────────────────────
-  let recordedBlob = null;
-  function fileChosen(input) {
-    const name = input.files[0]?.name;
-    recordedBlob = null;
-    document.getElementById('file-name').textContent = name ? '📎 ' + name : '';
-    document.getElementById('btn-voice').disabled = !name;
-  }
-
-  let mediaRecorder;
-  let audioChunks = [];
-
-  async function toggleRecording() {
-      const btnIcon = document.getElementById('record-icon');
-      const btnText = document.getElementById('record-text');
-      const status  = document.getElementById('record-status');
-      const audioInput = document.getElementById('audio-input');
-      
-      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-          try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              mediaRecorder = new MediaRecorder(stream);
-              audioChunks = [];
-              
-              mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-              mediaRecorder.onstop = () => {
-                  recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                  document.getElementById('file-name').textContent = '📎 Recorded_Audio.webm';
-                  document.getElementById('btn-voice').disabled = false;
-                  audioInput.value = "";
-              };
-
-              mediaRecorder.start();
-              btnIcon.textContent = '⏹️';
-              btnText.textContent = 'Stop Recording';
-              status.style.display = 'inline';
-          } catch(err) {
-              alert('Error accessing microphone: ' + err.message);
-          }
-      } else if (mediaRecorder.state === 'recording') {
-          mediaRecorder.stop();
-          mediaRecorder.stream.getTracks().forEach(track => track.stop());
-          btnIcon.textContent = '🔴';
-          btnText.textContent = 'Record Audio';
-          status.style.display = 'none';
-      }
-  }
-
-  // ── Loading state ────────────────────────────────────────────────────────
-  function setLoading(btnId, on) {
-    const btn = document.getElementById(btnId);
-    if (on) btn.classList.add('loading');
-    else     btn.classList.remove('loading');
-    btn.disabled = on;
-  }
-
-  // ── Render results ───────────────────────────────────────────────────────
-  function renderResult(data) {
-    const d = data.decision;
-    document.getElementById('res-drug').textContent = data.drug || '—';
-
-    // risk badge
-    const badge = document.getElementById('res-risk-badge');
-    badge.className = 'risk-badge risk-' + d.risk_level;
-    document.getElementById('res-risk-label').textContent = d.risk_level;
-
-    // message
-    document.getElementById('res-message').textContent = d.message;
-
-    // transcript (voice only)
-    if (data.transcript) {
-      document.getElementById('res-transcript').textContent = data.transcript;
-      document.getElementById('res-transcript-wrap').style.display = 'block';
-    } else {
-      document.getElementById('res-transcript-wrap').style.display = 'none';
-    }
-
-    // LASA hits table
-    const tbody = document.getElementById('res-table');
-    tbody.innerHTML = '';
-    const hits = data.lasa_hits || [];
-    if (hits.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="color:var(--text-muted);text-align:center">No confusable drugs found in master list.</td></tr>';
-    }
-    hits.forEach(h => {
-      const prob   = h.lasa_prob;
-      const pct    = (prob * 100).toFixed(1) + '%';
-      const color  = prob > 0.75 ? 'var(--danger)' : prob > 0.45 ? 'var(--warning)' : 'var(--success)';
-      const row    = document.createElement('tr');
-      row.innerHTML = `
-        <td>${h.candidate}</td>
-        <td>
-          <div class="prob-bar-wrap">
-            <div class="prob-bar"><div class="prob-bar-fill" style="width:${pct};background:${color}"></div></div>
-            <div class="prob-val">${pct}</div>
-          </div>
-        </td>
-        <td><span class="risk-badge risk-${h.risk_level}" style="padding:3px 10px;font-size:.73rem">${h.risk_level}</span></td>`;
-      tbody.appendChild(row);
+  function draw() {
+    ctx.fillStyle = 'rgba(2,11,2,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff41';
+    ctx.font      = '13px JetBrains Mono, monospace';
+    drops.forEach((y, i) => {
+      const ch = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(ch, i * 18, y * 18);
+      if (y * 18 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
     });
-
-    // Explainability Log
-    const rList = document.getElementById('res-reasons-list');
-    rList.innerHTML = '';
-    const reasons_arr = d.reasons || [];
-    reasons_arr.forEach(reason => {
-        const li = document.createElement('li');
-        li.textContent = reason;
-        rList.appendChild(li);
-    });
-
-    // context mismatch
-    const ctx = d.details?.context_result;
-    if (ctx?.mismatch) {
-      document.getElementById('res-context-msg').textContent = ctx.note;
-      document.getElementById('res-context-wrap').style.display = 'flex';
-    } else {
-      document.getElementById('res-context-wrap').style.display = 'none';
-    }
-
-    document.getElementById('result-area').style.display = 'block';
-    document.getElementById('result-area').scrollIntoView({ behavior: 'smooth' });
   }
+  setInterval(draw, 60);
+})();
 
-  function showError(msg) {
-    const box = document.getElementById('error-box');
-    box.textContent = '❌ ' + msg;
-    box.style.display = 'block';
-  }
+// ── Examples ──────────────────────────────────────────────────────────────────
+function setExample(text, diag) {
+  document.getElementById('sentence-input').value = text;
+  document.getElementById('diagnosis-text').value = diag;
+}
 
-  // ── Text analysis ────────────────────────────────────────────────────────
-  async function analyzeText(e) {
-    e.preventDefault();
-    hideResult();
-    const text      = document.getElementById('sentence-input').value.trim();
-    const diagnosis = document.getElementById('diagnosis-text').value;
-    if (!text) { showError('Please enter a clinical sentence or drug name.'); return; }
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+  hideResult();
+}
 
-    setLoading('btn-text', true);
+function hideResult() {
+  document.getElementById('result-area').style.display = 'none';
+  document.getElementById('error-box').style.display   = 'none';
+}
+
+// ── File input ────────────────────────────────────────────────────────────────
+let recordedBlob = null;
+function fileChosen(input) {
+  const name = input.files[0]?.name;
+  recordedBlob = null;
+  document.getElementById('file-name').textContent = name ? '>> ' + name : '';
+  document.getElementById('btn-voice').disabled    = !name;
+}
+
+let mediaRecorder, audioChunks = [];
+async function toggleRecording() {
+  const btnIcon = document.getElementById('record-icon');
+  const btnText = document.getElementById('record-text');
+  const status  = document.getElementById('record-status');
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
     try {
-      const form = new FormData();
-      form.append('text', text);
-      form.append('diagnosis', diagnosis);
-      const res  = await fetch('/analyze', { method: 'POST', body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Server error');
-      renderResult(data);
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      setLoading('btn-text', false);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder   = new MediaRecorder(stream);
+      audioChunks     = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        document.getElementById('file-name').textContent = '>> Recorded_Audio.webm';
+        document.getElementById('btn-voice').disabled    = false;
+        document.getElementById('audio-input').value     = '';
+      };
+      mediaRecorder.start();
+      btnIcon.textContent = '■';
+      btnText.textContent = 'STOP RECORDING';
+      status.style.display = 'inline';
+    } catch(err) {
+      alert('Microphone access denied: ' + err.message);
     }
+  } else if (mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    btnIcon.textContent  = '●';
+    btnText.textContent  = 'RECORD AUDIO';
+    status.style.display = 'none';
+  }
+}
+
+// ── Loading ───────────────────────────────────────────────────────────────────
+function setLoading(id, on) {
+  const btn = document.getElementById(id);
+  btn.classList.toggle('loading', on);
+  btn.disabled = on;
+}
+
+// ── Render results ────────────────────────────────────────────────────────────
+function renderResult(data) {
+  const d = data.decision;
+  const rl = d.risk_level;
+
+  // Timestamp
+  document.getElementById('res-timestamp').textContent =
+    new Date().toISOString().replace('T',' ').slice(0,19) + ' UTC';
+
+  // Drug name
+  document.getElementById('res-drug').textContent = (data.drug || '—').toUpperCase();
+
+  // Risk badge
+  const badge = document.getElementById('res-risk-badge');
+  badge.className = 'risk-badge risk-' + rl;
+  document.getElementById('res-risk-label').textContent = rl;
+
+  // Message
+  const msgEl = document.getElementById('res-message');
+  msgEl.textContent = d.message;
+  msgEl.className = 'msg-box ' + (rl === 'HIGH' ? 'high' : rl === 'MEDIUM' ? 'medium' : '');
+
+  // Transcript
+  if (data.transcript) {
+    document.getElementById('res-transcript').textContent = data.transcript;
+    document.getElementById('res-transcript-wrap').style.display = 'block';
+  } else {
+    document.getElementById('res-transcript-wrap').style.display = 'none';
   }
 
-  // ── Voice analysis ───────────────────────────────────────────────────────
-  async function analyzeVoice(e) {
-    e.preventDefault();
-    hideResult();
-    const fileInput = document.getElementById('audio-input');
-    const diagnosis = document.getElementById('diagnosis-voice').value;
-    if (!fileInput.files[0] && !recordedBlob) { showError('Please select or record an audio file.'); return; }
-
-    setLoading('btn-voice', true);
-    try {
-      const form = new FormData();
-      if (recordedBlob) {
-          form.append('file', recordedBlob, 'recording.webm');
-      } else {
-          form.append('file', fileInput.files[0]);
-      }
-      form.append('diagnosis', diagnosis);
-      const res  = await fetch('/voice', { method: 'POST', body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Server error');
-      renderResult(data);
-    } catch (err) {
-      showError(err.message);
-    } finally {
-      setLoading('btn-voice', false);
-    }
-  }
-
-  // ── Drag and drop ────────────────────────────────────────────────────────
-  const dz = document.getElementById('drop-zone');
-  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
-  dz.addEventListener('dragleave', () => dz.classList.remove('active'));
-  dz.addEventListener('drop', e => {
-    e.preventDefault();
-    dz.classList.remove('active');
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const input = document.getElementById('audio-input');
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      input.files = dt.files;
-      fileChosen(input);
-    }
+  // Reasons log
+  const rList = document.getElementById('res-reasons-list');
+  rList.innerHTML = '';
+  (d.reasons || []).forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.textContent = r;
+    rList.appendChild(div);
   });
+  if (!d.reasons?.length) {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.textContent = 'No significant risk factors detected.';
+    rList.appendChild(div);
+  }
+
+  // LASA hits table
+  const tbody = document.getElementById('res-table');
+  tbody.innerHTML = '';
+  const hits = data.lasa_hits || [];
+  if (!hits.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);text-align:center;letter-spacing:0.1em">-- NO CONFUSABLE DRUGS IN MASTER LIST --</td></tr>`;
+  }
+  hits.forEach(h => {
+    const prob  = h.lasa_prob;
+    const pct   = (prob * 100).toFixed(1) + '%';
+    const color = prob > 0.75 ? 'var(--danger)' : prob > 0.45 ? 'var(--warning)' : 'var(--neon)';
+    const row   = document.createElement('tr');
+    row.innerHTML = `
+      <td>${h.candidate}</td>
+      <td>
+        <div class="prob-bar-wrap">
+          <div class="prob-bar">
+            <div class="prob-bar-fill" style="width:${pct};background:${color};color:${color}"></div>
+          </div>
+          <div class="prob-val">${pct}</div>
+        </div>
+      </td>
+      <td><span class="risk-badge risk-${h.risk_level}" style="padding:4px 12px;font-family:var(--mono);font-size:10px;letter-spacing:0.1em;clip-path:none;">${h.risk_level}</span></td>
+      <td style="color:${h.known_in_ismp ? 'var(--danger)' : 'var(--text-muted)'}">
+        ${h.known_in_ismp ? '⚑ YES' : '—'}
+      </td>`;
+    tbody.appendChild(row);
+  });
+
+  // Context mismatch
+  const ctx = d.details?.context_result;
+  const mismatchBox = document.getElementById('res-context-wrap');
+  if (ctx?.mismatch) {
+    document.getElementById('res-context-msg').textContent = ctx.note;
+    mismatchBox.style.display = 'flex';
+  } else {
+    mismatchBox.style.display = 'none';
+  }
+
+  document.getElementById('result-area').style.display = 'block';
+  document.getElementById('result-area').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showError(msg) {
+  const box = document.getElementById('error-box');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+// ── Text analysis ─────────────────────────────────────────────────────────────
+async function analyzeText(e) {
+  e.preventDefault();
+  hideResult();
+  const text      = document.getElementById('sentence-input').value.trim();
+  const diagnosis = document.getElementById('diagnosis-text').value;
+  if (!text) { showError('MISSING_INPUT :: Enter a clinical sentence or drug name.'); return; }
+  setLoading('btn-text', true);
+  try {
+    const form = new FormData();
+    form.append('text', text);
+    form.append('diagnosis', diagnosis);
+    const res  = await fetch('/analyze', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Internal Server Error');
+    renderResult(data);
+  } catch(err) {
+    showError(err.message);
+  } finally {
+    setLoading('btn-text', false);
+  }
+}
+
+// ── Voice analysis ────────────────────────────────────────────────────────────
+async function analyzeVoice(e) {
+  e.preventDefault();
+  hideResult();
+  const fileInput = document.getElementById('audio-input');
+  const diagnosis = document.getElementById('diagnosis-voice').value;
+  if (!fileInput.files[0] && !recordedBlob) {
+    showError('MISSING_AUDIO :: Select or record an audio file first.');
+    return;
+  }
+  setLoading('btn-voice', true);
+  try {
+    const form = new FormData();
+    if (recordedBlob) {
+      form.append('file', recordedBlob, 'recording.webm');
+    } else {
+      form.append('file', fileInput.files[0]);
+    }
+    form.append('diagnosis', diagnosis);
+    const res  = await fetch('/voice', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Internal Server Error');
+    renderResult(data);
+  } catch(err) {
+    showError(err.message);
+  } finally {
+    setLoading('btn-voice', false);
+  }
+}
+
+// ── Drag and drop ─────────────────────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('active'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('active'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const input = document.getElementById('audio-input');
+    const dt    = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    fileChosen(input);
+  }
+});
 </script>
 </body>
 </html>
