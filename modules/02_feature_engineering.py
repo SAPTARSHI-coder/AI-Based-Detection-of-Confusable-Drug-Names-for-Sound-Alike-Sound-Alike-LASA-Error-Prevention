@@ -72,7 +72,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     return features
 
 def main():
-    print("Loading training dataset …")
+    print("Loading training dataset ...")
     df = pd.read_csv(INPUT_CSV)
     print(f"  Rows loaded: {len(df)}")
 
@@ -80,7 +80,7 @@ def main():
     feat_df = build_features(df)
 
     feat_df.to_csv(OUTPUT_CSV, index=False)
-    print(f"✓ Feature matrix saved → {OUTPUT_CSV.name}")
+    print(f"> Feature matrix saved -> {OUTPUT_CSV.name}")
     print(f"  Shape: {feat_df.shape}")
     print(feat_df.head(3))
 
