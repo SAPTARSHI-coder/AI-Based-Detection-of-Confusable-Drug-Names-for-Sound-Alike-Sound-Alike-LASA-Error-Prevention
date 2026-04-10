@@ -15,7 +15,7 @@ try:
     def _load_model(size: str = "base"):
         global _MODEL
         if _MODEL is None:
-            print(f"  Loading Whisper model ({size}) …")
+            print(f"  Loading Whisper model ({size}) ...")
             _MODEL = _whisper.load_model(size)
         return _MODEL
 

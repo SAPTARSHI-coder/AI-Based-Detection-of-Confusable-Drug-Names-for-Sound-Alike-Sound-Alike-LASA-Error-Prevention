@@ -119,5 +119,5 @@ if __name__ == "__main__":
     ]
     for drug, diag in tests:
         r = validate(drug, diag)
-        flag = "⚠ MISMATCH" if r["mismatch"] else "✓ OK"
-        print(f"{flag}  drug={drug}  diag={diag}  → {r['note']}")
+        flag = "! MISMATCH" if r["mismatch"] else "> OK"
+        print(f"{flag}  drug={drug}  diag={diag}  -> {r['note']}")
