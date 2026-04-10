@@ -35,7 +35,7 @@ def evaluate(name, model, X_test, y_test):
     y_pred = model.predict(X_test)
     y_prob = model.predict_proba(X_test)[:, 1]
     auc    = roc_auc_score(y_test, y_prob)
-    print(f"\n── {name} ──────────────────────")
+    print(f"\n-- {name} ----------------------")
     print(classification_report(y_test, y_pred, target_names=["Non-LASA", "LASA"]))
     print(f"  AUC-ROC: {auc:.4f}")
     return auc, y_pred
@@ -45,7 +45,7 @@ def evaluate_baseline(X_test, y_test):
     y_pred    = (jw_scores > 0.85).astype(int)
     auc       = roc_auc_score(y_test, jw_scores)
     
-    print("\n── Fuzzy Matching Baseline (Jaro-Winkler > 0.85) ──")
+    print("\n-- Fuzzy Matching Baseline (Jaro-Winkler > 0.85) --")
     print(classification_report(y_test, y_pred, target_names=["Non-LASA", "LASA"]))
     print(f"  AUC-ROC: {auc:.4f}")
     return auc, y_pred
@@ -54,7 +54,7 @@ def evaluate_baseline(X_test, y_test):
 def main():
     MODEL_DIR.mkdir(exist_ok=True)
 
-    print("Loading feature matrix …")
+    print("Loading feature matrix ...")
     df = pd.read_csv(FEAT_CSV)
     print(f"  Shape: {df.shape}")
 
@@ -90,7 +90,7 @@ def main():
         if auc > best_auc:
             best_auc, best_model, best_name = auc, clf, name
 
-    print(f"\n✓ Best model: {best_name}  (AUC = {best_auc:.4f})")
+    print(f"\n> Best model: {best_name}  (AUC = {best_auc:.4f})")
 
     # ── save ──────────────────────────────────────────────────────────────────
     artifact = {
@@ -100,7 +100,7 @@ def main():
         "auc":          best_auc,
     }
     joblib.dump(artifact, MODEL_PATH)
-    print(f"✓ Model saved → {MODEL_PATH}")
+    print(f"> Model saved -> {MODEL_PATH}")
 
     # ── confusion matrix plot ─────────────────────────────────────────────────
     y_pred_best = best_model.predict(X_test)
@@ -113,7 +113,7 @@ def main():
     plt.tight_layout()
     plt.savefig(plot_path)
     plt.close()
-    print(f"✓ Confusion matrix plot saved → {plot_path}")
+    print(f"> Confusion matrix plot saved -> {plot_path}")
 
 if __name__ == "__main__":
     main()
