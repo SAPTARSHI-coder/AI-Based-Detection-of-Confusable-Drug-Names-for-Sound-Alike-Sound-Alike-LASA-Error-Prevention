@@ -578,7 +578,7 @@ This system implements concepts from published literature on medication safety s
 
 <div align="center">
 
-**Built with ❤️ for patient safety**
+**Built with ❤️ for patient safety by Saptarshi Sadhu**
 
 *Reducing LASA medication errors through intelligent clinical decision support*
 
