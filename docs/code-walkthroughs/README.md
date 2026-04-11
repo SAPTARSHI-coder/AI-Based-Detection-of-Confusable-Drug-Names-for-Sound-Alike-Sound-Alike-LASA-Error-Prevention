@@ -19,6 +19,7 @@
 | 8 | [`08_decision_engine.md`](./08_decision_engine.md) | `08_decision_engine.py` | Combining all signals into a final LOW/MEDIUM/HIGH risk verdict with explanations |
 | 9 | [`modules_utils.md`](./modules_utils.md) | `modules_utils.py` | The shared feature calculator — the file that keeps training and live use consistent |
 | + | [`app_py.md`](./app_py.md) | `app/app.py` | The FastAPI web server — all three endpoints, module loading, file upload handling |
+| + | [`index_html.md`](./index_html.md) | `app/templates/index.html` | The complete frontend — CSS design system, HTML structure, JavaScript (Matrix rain, fetch API, renderResult) |
 
 ---
 
