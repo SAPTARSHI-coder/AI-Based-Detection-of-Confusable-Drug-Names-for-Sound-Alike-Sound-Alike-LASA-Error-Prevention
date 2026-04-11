@@ -1,6 +1,6 @@
 <div align="center">
 
-# AI-Based Detection of Confusable Drug Names
+# 💊 AI-Based Detection of Confusable Drug Names
 ### Clinical Decision Support for Look-Alike Sound-Alike (LASA) Medication Error Prevention
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
@@ -18,29 +18,29 @@
 
 ## Table of Contents
 
-1. [Why This Project Matters](#why-this-project-matters)
-2. [Problem Statement](#problem-statement)
-3. [Key Features](#key-features)
-4. [System Architecture](#system-architecture)
-5. [Project Structure](#project-structure)
-6. [Installation](#installation)
-7. [Usage](#usage)
-8. [API Reference](#api-reference)
-9. [Risk Scoring Logic](#risk-scoring-logic)
-10. [Model Performance](#model-performance)
-11. [Feature Engineering](#feature-engineering)
-12. [Tech Stack](#tech-stack)
-13. [Supported Diagnoses](#supported-diagnoses)
-14. [Configuration](#configuration)
-15. [Troubleshooting](#troubleshooting)
-16. [Future Improvements](#future-improvements)
-17. [Research Background](#research-background)
-18. [Contributing](#contributing)
-19. [Disclaimer](#disclaimer)
+1. [❗ Why This Project Matters](#why-this-project-matters)
+2. [🎯 Problem Statement](#problem-statement)
+3. [✨ Key Features](#key-features)
+4. [🏗️ System Architecture](#system-architecture)
+5. [📁 Project Structure](#project-structure)
+6. [🚀 Installation](#installation)
+7. [🧪 Usage](#usage)
+8. [📖 API Reference](#api-reference)
+9. [⚖️ Risk Scoring Logic](#risk-scoring-logic)
+10. [📊 Model Performance](#model-performance)
+11. [🧬 Feature Engineering](#feature-engineering)
+12. [🛠️ Tech Stack](#tech-stack)
+13. [🏥 Supported Diagnoses](#supported-diagnoses)
+14. [⚙️ Configuration](#configuration)
+15. [🔧 Troubleshooting](#troubleshooting)
+16. [🔭 Future Improvements](#future-improvements)
+17. [🔬 Research Background](#research-background)
+18. [🤝 Contributing](#contributing)
+19. [⚠️ Disclaimer](#disclaimer)
 
 ---
 
-## Why This Project Matters
+## ❗ Why This Project Matters
 
 Medication errors are the third leading cause of preventable death in hospital settings. Among them, **LASA errors** — where a clinician orders, transcribes, or dispenses the wrong drug simply because its name looks or sounds like another — are uniquely dangerous because they are invisible to standard dose-range checking systems.
 
@@ -52,7 +52,7 @@ The goal is not to replace clinical judgment. The goal is to provide one more ch
 
 ---
 
-## Problem Statement
+## 🎯 Problem Statement
 
 ### What is a LASA Error?
 
@@ -79,7 +79,7 @@ The **Institute for Safe Medication Practices (ISMP)** maintains an official lis
 
 ---
 
-## Key Features
+## ✨ Key Features
 
 | Feature | Description |
 |:---|:---|
@@ -95,7 +95,7 @@ The **Institute for Safe Medication Practices (ISMP)** maintains an official lis
 
 ---
 
-## System Architecture
+## 🏗️ System Architecture
 
 ### Inference Pipeline
 
@@ -182,7 +182,7 @@ Module 03: Model Training
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 lasa_detection/
@@ -226,7 +226,7 @@ lasa_detection/
 
 ---
 
-## Installation
+## 🚀 Installation
 
 ### Prerequisites
 
@@ -271,7 +271,7 @@ Open `http://localhost:8000` in your browser.
 
 ---
 
-## Usage
+## 🧪 Usage
 
 ### Web Interface
 
@@ -292,7 +292,7 @@ Upload a `.wav` or `.mp3` audio file. The system transcribes it via Whisper, ext
 
 ### Usage Examples
 
-#### Example 1: Safe Prescription (Low Risk)
+#### Example 1: ✅ Safe Prescription (Low Risk)
 
 ```
 Text:      "Push 500mg of metformin immediately."
@@ -327,7 +327,7 @@ Diagnosis: diabetes
 
 ---
 
-#### Example 2: Context Mismatch — High Risk
+#### Example 2: ⚠️ Context Mismatch — High Risk
 
 ```
 Text:      "Start a drip of hydralazine."
@@ -365,7 +365,7 @@ Diagnosis: anxiety
 
 ---
 
-#### Example 3: REST API (curl)
+#### Example 3: 🌐 REST API (curl)
 
 ```bash
 curl -X POST "http://localhost:8000/analyze" \
@@ -373,7 +373,7 @@ curl -X POST "http://localhost:8000/analyze" \
      -F "diagnosis=cancer"
 ```
 
-#### Example 4: Voice Input (API)
+#### Example 4: 🎙️ Voice Input (API)
 
 ```bash
 curl -X POST "http://localhost:8000/voice" \
@@ -383,7 +383,7 @@ curl -X POST "http://localhost:8000/voice" \
 
 ---
 
-## API Reference
+## 📖 API Reference
 
 ### Endpoints
 
@@ -487,7 +487,7 @@ Identical to `/analyze`, with one additional top-level field:
 
 ---
 
-## Risk Scoring Logic
+## ⚖️ Risk Scoring Logic
 
 The decision engine in `modules/08_decision_engine.py` does not rely on a single threshold. It aggregates four independent signals:
 
@@ -503,15 +503,15 @@ adjusted_score = base_lasa_prob
 
 | Risk Level | Conditions |
 |:---|:---|
-| HIGH | Diagnosis mismatch detected AND adjusted score > 0.75 |
-| MEDIUM | Mismatch with score in range (0.45, 0.75], OR known ISMP pair with score > 0.80, OR low STT confidence with high score |
-| LOW | No mismatch detected, or all scores below thresholds |
+| 🔴 **HIGH** | Diagnosis mismatch detected AND adjusted score > 0.75 |
+| 🟡 **MEDIUM** | Mismatch with score in range (0.45, 0.75], OR known ISMP pair with score > 0.80, OR low STT confidence with high score |
+| 🟢 **LOW** | No mismatch detected, or all scores below thresholds |
 
 **Design rationale:** The asymmetry between the HIGH and LOW branches is deliberate. A high LASA similarity score without a clinical context mismatch does not produce a HIGH alert — because a drug that is phonetically similar to another but appropriate for the patient's condition is not a dangerous substitution in context. The system rewards validated clinical intent and penalizes only combinations of similarity *and* contextual inappropriateness. This mirrors how a pharmacist would actually reason through a LASA pair.
 
 ---
 
-## Model Performance
+## 📊 Model Performance
 
 Both `RandomForestClassifier` and `GradientBoostingClassifier` are trained on every pipeline run. The one with the higher AUC-ROC on the stratified 20% held-out test set is serialized to `models/lasa_classifier.pkl`.
 
@@ -543,7 +543,7 @@ A confusion matrix is automatically saved to `models/confusion_matrix.png` after
 
 ---
 
-## Feature Engineering
+## 🧬 Feature Engineering
 
 Nine similarity features are computed for every drug pair `(A, B)` during training (in `modules/02_feature_engineering.py`) and at inference time (in `modules/modules_utils.py`). All features are computed in lowercase.
 
@@ -571,7 +571,7 @@ No single feature from any one dimension is sufficient. A pair like `clonidine` 
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 ### Machine Learning and Data
 
@@ -611,7 +611,7 @@ No single feature from any one dimension is sufficient. A pair like `clonidine` 
 
 ---
 
-## Supported Diagnoses
+## 🏥 Supported Diagnoses
 
 The Patient Context Validator (`modules/07_patient_context.py`) maps diagnoses to expected pharmacological drug classes. A prescription flagged as a mismatch means the drug's class is not in the expected class list for that diagnosis.
 
@@ -634,7 +634,7 @@ To extend the taxonomy, add entries to `DRUG_CLASS_MAP` and `DIAGNOSIS_CLASS_MAP
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
 No configuration file is required. All paths resolve relative to the project root at runtime. To override the defaults, edit the following constants:
 
@@ -663,7 +663,7 @@ This structure allows you to inspect or swap the underlying estimator without mo
 
 ---
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 | Symptom | Likely Cause | Resolution |
 |:---|:---|:---|
@@ -677,7 +677,7 @@ This structure allows you to inspect or swap the underlying estimator without mo
 
 ---
 
-## Future Improvements
+## 🔭 Future Improvements
 
 The following extensions would meaningfully increase the system's clinical utility and research validity:
 
@@ -695,7 +695,7 @@ The following extensions would meaningfully increase the system's clinical utili
 
 ---
 
-## Research Background
+## 🔬 Research Background
 
 This system implements and validates concepts from the published medication safety literature:
 
@@ -707,7 +707,7 @@ This system implements and validates concepts from the published medication safe
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome. To propose a change:
 
@@ -727,7 +727,7 @@ Please keep all contributions focused on correctness and clinical plausibility. 
 
 ---
 
-## Disclaimer
+## ⚠️ Disclaimer
 
 This system is provided **for educational and research purposes only**.
 
@@ -741,7 +741,7 @@ The authors assume no liability for any clinical outcome arising from the use or
 
 <div align="center">
 
-Built for patient safety research by Saptarshi Sadhu.
+Built with ❤️ for patient safety research by Saptarshi Sadhu.
 
 *The best medication error is the one that never reaches the patient.*
 
