@@ -741,7 +741,7 @@ The authors assume no liability for any clinical outcome arising from the use or
 
 <div align="center">
 
-Built for patient safety research.
+Built for patient safety research by Saptarshi Sadhu.
 
 *The best medication error is the one that never reaches the patient.*
 
