@@ -1,221 +1,306 @@
 <div align="center">
 
-# 💊 AI-Based LASA Drug Name Detection System
+# AI-Based Detection of Confusable Drug Names
+### Clinical Decision Support for Look-Alike Sound-Alike (LASA) Medication Error Prevention
 
-### *Clinical Decision Support for Look-Alike Sound-Alike Medication Error Prevention*
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.x-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
+[![License](https://img.shields.io/badge/License-Research%20Only-red?style=flat-square)](#disclaimer)
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)]()
+[![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-blue?style=flat-square)](CONTRIBUTING.md)
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.135-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.x-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org/)
-[![Pandas](https://img.shields.io/badge/Pandas-2.x-150458?style=for-the-badge&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
-[![NumPy](https://img.shields.io/badge/NumPy-1.x-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org/)
-[![Jinja2](https://img.shields.io/badge/Jinja2-3.x-B41717?style=for-the-badge&logo=jinja&logoColor=white)](https://jinja.palletsprojects.com/)
-
-> **LASA medication errors are among the most preventable — and the most dangerous — in clinical environments.**
-> This system brings AI-powered, real-time safety analysis directly to the point of care.
-
----
-
-[🚀 Quick Start](#-quick-start) · [🏗 Architecture](#-system-architecture) · [📖 API Docs](#-api-reference) · [🧪 Usage Examples](#-usage-examples) · [📊 Model Performance](#-model-performance) · [🛠 Tech Stack](#-tech-stack)
+*A modular, explainable AI system that identifies phonetically and orthographically similar drug name pairs at the point of care — before a dangerous substitution reaches the patient.*
 
 </div>
 
 ---
 
-## 🎯 What is LASA?
+## Table of Contents
 
-**Look-Alike Sound-Alike (LASA)** refers to pairs of drug names that look or sound similar enough to be confused with each other, leading to catastrophic medication errors. According to the **Institute for Safe Medication Practices (ISMP)**, LASA errors account for **~25% of all reported medication errors** in hospitals.
-
-**Classic dangerous pairs include:**
-| Drug A | Drug B | Confusion Risk |
-|:---|:---|:---|
-| `dopamine` | `dobutamine` | Both vasopressors — very similar names & routes |
-| `hydroxyzine` | `hydralazine` | Antihistamine vs. antihypertensive |
-| `metformin` | `methergine` | Antidiabetic vs. uterotonic oxytocic |
-| `vincristine` | `vinblastine` | Both vinca alkaloids — 10x dose difference is fatal |
-| `lorazepam` | `alprazolam` | Both benzodiazepines — easy phonetic swap |
-
-This system uses **machine learning, NLP, and patient context validation** to flag these errors before they reach the patient.
+1. [Why This Project Matters](#why-this-project-matters)
+2. [Problem Statement](#problem-statement)
+3. [Key Features](#key-features)
+4. [System Architecture](#system-architecture)
+5. [Project Structure](#project-structure)
+6. [Installation](#installation)
+7. [Usage](#usage)
+8. [API Reference](#api-reference)
+9. [Risk Scoring Logic](#risk-scoring-logic)
+10. [Model Performance](#model-performance)
+11. [Feature Engineering](#feature-engineering)
+12. [Tech Stack](#tech-stack)
+13. [Supported Diagnoses](#supported-diagnoses)
+14. [Configuration](#configuration)
+15. [Troubleshooting](#troubleshooting)
+16. [Future Improvements](#future-improvements)
+17. [Research Background](#research-background)
+18. [Contributing](#contributing)
+19. [Disclaimer](#disclaimer)
 
 ---
 
-## ✨ Features
+## Why This Project Matters
+
+Medication errors are the third leading cause of preventable death in hospital settings. Among them, **LASA errors** — where a clinician orders, transcribes, or dispenses the wrong drug simply because its name looks or sounds like another — are uniquely dangerous because they are invisible to standard dose-range checking systems.
+
+A pharmacist can catch these manually. A busy ICU nurse at 3 a.m. often cannot.
+
+This project demonstrates that a lightweight, interpretable machine learning system built on established string-similarity methods can replicate pharmacist-level LASA detection with **AUC ≈ 0.97** — and do it in real time, at every clinical interaction, while also cross-checking whether the prescribed drug even makes sense for the patient's diagnosis.
+
+The goal is not to replace clinical judgment. The goal is to provide one more check — automated, instant, and explainable — between a confusable drug name and a patient.
+
+---
+
+## Problem Statement
+
+### What is a LASA Error?
+
+**Look-Alike Sound-Alike (LASA)** drug name confusion occurs when two drug names are sufficiently similar in spelling or pronunciation that one is substituted for the other during prescribing, transcription, dispensing, or administration.
+
+The **Institute for Safe Medication Practices (ISMP)** maintains an official list of over 400 high-alert LASA pairs. These are not edge cases — they represent recurring, documented harm events from hospitals worldwide.
+
+**Representative dangerous pairs:**
+
+| Drug A | Drug B | Drug Classes | Clinical Risk |
+|:---|:---|:---|:---|
+| `dopamine` | `dobutamine` | Both vasopressors | Different hemodynamic effects; overdose risk |
+| `hydroxyzine` | `hydralazine` | Antihistamine vs. antihypertensive | Wrong drug class entirely |
+| `vincristine` | `vinblastine` | Both vinca alkaloids | A 10x dose difference between them is fatal |
+| `metformin` | `methergine` | Antidiabetic vs. uterotonic | Life-threatening if given to a non-obstetric patient |
+| `lorazepam` | `alprazolam` | Both benzodiazepines | Dose and indication differ significantly |
+| `cisplatin` | `carboplatin` | Both platinum agents | Toxicity profiles and dosing are not interchangeable |
+
+### Scale of the Problem
+
+- LASA errors account for approximately **25% of all reported medication errors** in acute care settings (ISMP, 2023)
+- Many electronic health record systems lack phonetic similarity detection
+- Existing drug-checking software typically flags only exact name matches or known pairs — not novel confusable names
+
+---
+
+## Key Features
 
 | Feature | Description |
 |:---|:---|
-| 📄 **PDF Data Extraction** | Parses ISMP drug confusion alert PDFs using `pdfplumber` to build a labeled positive-pair dataset |
-| 🧮 **9-Feature Engineering** | Computes Levenshtein distance, WRatio, Token Sort Ratio, Soundex, Metaphone, Bi/Trigram overlap, prefix match, and length ratio |
-| 🤖 **Ensemble ML Classification** | Random Forest and Gradient Boosting both trained; best AUC model is automatically selected and serialized |
-| 🗣️ **NLP Drug Extraction** | Regex + curated dictionary-based clinical NER — extracts drug name, dosage, and route from free-text sentences |
-| 🎙️ **Speech-to-Text** | OpenAI Whisper integration for voice-based clinical input with graceful mock fallback |
-| 🏥 **Patient Context Validation** | Secondary safety layer — cross-references drug class against a patient diagnosis taxonomy |
-| ⚖️ **Decision Engine** | Context-aware risk stratification (🟢 LOW / 🟡 MEDIUM / 🔴 HIGH) with ISMP-boost scoring and human-readable reasons |
-| 🌐 **Web Interface** | Dark-themed, responsive FastAPI + Jinja2 frontend with real-time JSON analysis |
+| **PDF-Based Dataset Construction** | Parses ISMP drug confusion alert PDFs via `pdfplumber` to extract labeled positive LASA pairs |
+| **9-Dimensional Feature Engineering** | Per-pair similarity computed across Levenshtein, WRatio, Token Sort Ratio, Soundex, Metaphone, bi/trigram Jaccard, prefix match, and length ratio |
+| **Ensemble ML Classification** | Both Random Forest and Gradient Boosting trained per run; best AUC model is automatically selected and serialized |
+| **Clinical NLP Drug Extraction** | Regex + curated dictionary NER extracts drug name, dosage, and route from free-form clinical text |
+| **Speech-to-Text Transcription** | OpenAI Whisper integration for voice-based input; graceful mock fallback when Whisper is unavailable |
+| **Patient Context Validation** | Drug class is cross-referenced against a diagnosis taxonomy; a prescribed antihypertensive for an anxiety patient triggers an independent mismatch flag |
+| **Multi-Signal Decision Engine** | Aggregates base ML score, ISMP-known-pair boost, context mismatch penalty, and STT confidence into a single, stratified risk level |
+| **Explainable Output** | Every response includes a structured `reasons` array — not just a score |
+| **FastAPI Web Application** | Three REST endpoints with automatic OpenAPI docs; Jinja2-rendered dark-themed clinical UI |
 
 ---
 
-## 🏗 System Architecture
+## System Architecture
 
-The system is a fully modular 8-stage pipeline. Each module is independently executable and produces serialized outputs consumed by the next stage.
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         CLINICAL INPUT                              │
-│              (Voice Recording OR Free-Text Sentence)                │
-└─────────────────────┬───────────────────────────────────────────────┘
-                      │
-          ┌───────────▼───────────┐
-          │  Module 06            │
-          │  Speech-to-Text       │  ← OpenAI Whisper (or graceful mock fallback)
-          │  (Transcription)      │    Returns: { text, language, confidence }
-          └───────────┬───────────┘
-                      │
-          ┌───────────▼───────────┐
-          │  Module 05            │
-          │  NLP Drug Extractor   │  ← Regex + Dictionary NER
-          │                       │    Returns: { drug, dose, route }
-          └───────────┬───────────┘
-                      │
-          ┌───────────▼───────────┐
-          │  Module 04            │
-          │  LASA Inference       │  ← modules_utils.compute_features_pair()
-          │  Engine               │    Scores query against master drug list
-          └───────────┬───────────┘
-                      │
-          ┌───────────▼───────────┐
-          │  Module 07            │
-          │  Patient Context      │  ← Taxonomy: Drug Class ↔ Diagnosis Map
-          │  Validator            │    Returns: { mismatch, drug_class, note }
-          └───────────┬───────────┘
-                      │
-          ┌───────────▼───────────┐
-          │  Module 08            │
-          │  Decision Engine      │  ← Aggregates all signals with ISMP boost
-          │                       │    Returns: { risk_level, message, reasons }
-          └───────────┬───────────┘
-                      │
-          ┌───────────▼───────────┐
-          │  Module 09 (app.py)   │
-          │  FastAPI Web Server   │  ← REST endpoints + Jinja2 HTML frontend
-          └───────────────────────┘
-```
-
-### Training Pipeline (Run Once)
+### Inference Pipeline
 
 ```
-PDF Files  →  Module 01  →  Module 02  →  Module 03  →  lasa_classifier.pkl
-(ISMP data)   (Pairs)       (Features)    (Training)     (Best model artifact)
++---------------------------+
+|       CLINICAL INPUT      |
+|  (Text sentence or audio) |
++---------------------------+
+             |
+             v
++---------------------------+      OpenAI Whisper
+|   Module 06               | <--- (or mock fallback)
+|   Speech-to-Text          |
+|   Returns: text, language |
++---------------------------+
+             |
+             v
++---------------------------+      Regex + drug dictionary
+|   Module 05               | <---
+|   NLP Drug Extractor      |
+|   Returns: drug, dose,    |
+|            route          |
++---------------------------+
+             |
+             v
++---------------------------+      compute_features_pair()
+|   Module 04               | <--- scores query vs. all
+|   LASA Inference Engine   |      drugs in drug_list.txt
+|   Returns: ranked hits    |
+|            + ISMP flags   |
++---------------------------+
+             |
+             v
++---------------------------+      DRUG_CLASS_MAP
+|   Module 07               | <--- DIAGNOSIS_CLASS_MAP
+|   Patient Context         |
+|   Validator               |
+|   Returns: mismatch,      |
+|            drug_class     |
++---------------------------+
+             |
+             v
++---------------------------+      Score aggregation
+|   Module 08               | <--- + risk stratification
+|   Decision Engine         |      + reason generation
+|   Returns: risk_level,    |
+|            message,       |
+|            reasons        |
++---------------------------+
+             |
+             v
++---------------------------+
+|   Module 09 (app.py)      |
+|   FastAPI Web Application |
+|   GET  /                  |
+|   POST /analyze           |
+|   POST /voice             |
++---------------------------+
 ```
 
-> **Module 03** trains both a `RandomForestClassifier` (200 trees, balanced class weights) and a `GradientBoostingClassifier` (200 estimators, lr=0.05), evaluates each on a stratified 80/20 split, and serializes the one with the higher AUC-ROC.
+### Training Pipeline (One-time Setup)
+
+```
+data/raw/*.pdf
+      |
+      v
+Module 01: Data Preprocessing
+- Extract positive pairs from ISMP PDFs
+- Generate negative samples (random non-confusable pairs)
+- Output: drug_pairs.csv, training_dataset.csv
+      |
+      v
+Module 02: Feature Engineering
+- Compute 9 similarity features per pair
+- Output: feature_matrix.csv
+      |
+      v
+Module 03: Model Training
+- Train RandomForestClassifier  (n=200, balanced weights)
+- Train GradientBoostingClassifier (n=200, lr=0.05)
+- Evaluate both on stratified 80/20 split
+- Save best AUC model as lasa_classifier.pkl
+```
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 lasa_detection/
-│
-├── data/
-│   ├── raw/                         # Source ISMP PDFs (add your own here)
-│   ├── processed/
-│   │   ├── drug_pairs.csv           # Extracted positive LASA pairs (drug1, drug2, label)
-│   │   ├── training_dataset.csv     # Balanced labeled dataset (positive + negative samples)
-│   │   └── feature_matrix.csv       # 9-dimensional feature vectors per pair
-│   └── drug_list.txt                # Master drug name list (~300+ entries, one per line)
-│
-├── modules/
-│   ├── 01_data_preprocessing.py     # PDF parsing + negative sample generation
-│   ├── 02_feature_engineering.py    # Similarity feature computation (9 metrics)
-│   ├── 03_model_training.py         # RF + GBM training, AUC comparison, best model saved
-│   ├── 04_lasa_engine.py            # Inference: score a query vs. all known drugs
-│   ├── 05_nlp_drug_extractor.py     # Clinical sentence → drug/dose/route extractor
-│   ├── 06_speech_to_text.py         # Whisper-based audio transcription wrapper
-│   ├── 07_patient_context.py        # Drug-class ↔ Diagnosis mismatch validator
-│   ├── 08_decision_engine.py        # Final risk aggregation + output formatter
-│   └── modules_utils.py             # Shared compute_features_pair() (used by engine + API)
-│
-├── models/
-│   └── lasa_classifier.pkl          # Serialized best model artifact (joblib dict)
-│
-├── app/
-│   ├── app.py                       # FastAPI application (3 endpoints + dynamic module loading)
-│   ├── static/                      # CSS, JS, icons
-│   └── templates/
-│       └── index.html               # Dark-themed clinical UI
-│
-├── notebooks/                       # Jupyter notebooks for EDA / prototyping
-├── bootstrap.py                     # Auto-creates full directory structure
-├── run_all.py                       # Full sequential pipeline runner (preprocessing → training)
-├── run_pipeline.bat                 # One-click Windows launcher (venv + install + train + serve)
-├── test_pdf.py                      # Utility: verify pdfplumber can parse ISMP PDFs
-└── requirements.txt                 # All Python dependencies
+|
++-- data/
+|   +-- raw/                         # Place ISMP source PDFs here
+|   +-- processed/
+|   |   +-- drug_pairs.csv           # Labeled LASA pairs (drug1, drug2, label)
+|   |   +-- training_dataset.csv     # Balanced dataset with positive + negative samples
+|   |   +-- feature_matrix.csv       # 9-dimensional feature vectors for every pair
+|   +-- drug_list.txt                # Master drug name list (~300+ entries, one per line)
+|
++-- modules/
+|   +-- 01_data_preprocessing.py     # PDF parsing + negative sample generation
+|   +-- 02_feature_engineering.py    # Per-pair similarity feature computation
+|   +-- 03_model_training.py         # Ensemble training, AUC comparison, best model save
+|   +-- 04_lasa_engine.py            # Real-time inference: query drug vs. full drug list
+|   +-- 05_nlp_drug_extractor.py     # Clinical text -> drug name, dose, route
+|   +-- 06_speech_to_text.py         # Whisper wrapper with mock fallback
+|   +-- 07_patient_context.py        # Drug class vs. diagnosis mismatch detection
+|   +-- 08_decision_engine.py        # Multi-signal score aggregation + reason generation
+|   +-- modules_utils.py             # Shared compute_features_pair() (training + inference)
+|
++-- models/
+|   +-- lasa_classifier.pkl          # Serialized model artifact (joblib dict)
+|   +-- confusion_matrix.png         # Auto-generated after each training run
+|
++-- app/
+|   +-- app.py                       # FastAPI application (3 endpoints)
+|   +-- static/                      # CSS, JS assets
+|   +-- templates/
+|       +-- index.html               # Jinja2 dark-themed clinical UI
+|
++-- notebooks/                       # EDA and prototyping notebooks
++-- bootstrap.py                     # Creates full directory structure from scratch
++-- run_all.py                       # Sequential pipeline runner (preprocess -> train)
++-- run_pipeline.bat                 # One-click Windows launcher
++-- test_pdf.py                      # Diagnostic: verify pdfplumber PDF parsing
++-- requirements.txt                 # All Python dependencies
 ```
 
 ---
 
-## 🚀 Quick Start
+## Installation
 
 ### Prerequisites
-- Python **3.10** or higher
-- Windows / macOS / Linux
-- ~500 MB disk space (if using Whisper voice input for model download)
 
-### Option A: One-Click (Windows)
+- Python 3.10 or higher
+- pip
+- ~500 MB free disk space (more if downloading the Whisper `base` model)
+
+### Option A: One-Click Windows Launcher
 
 ```bat
 run_pipeline.bat
 ```
 
-This automatically: creates a virtual environment → installs all dependencies → runs the full training pipeline → starts the web server at **`http://localhost:8000`**.
+This script sequentially: creates a virtual environment, installs all dependencies, runs the full training pipeline, and starts the web server at `http://localhost:8000`.
 
 ### Option B: Manual Setup
 
 ```bash
-# 1. Create and activate virtual environment
+# Step 1: Create and activate a virtual environment
 python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # macOS / Linux
 
-# 2. Install dependencies
+# Windows
+venv\Scripts\activate
+
+# macOS / Linux
+source venv/bin/activate
+
+# Step 2: Install all dependencies
 pip install -r requirements.txt
 
-# 3. (Optional) Add your ISMP PDFs to data/raw/ then run the training pipeline
+# Step 3: (Optional) Place ISMP PDFs in data/raw/, then run the training pipeline
 python run_all.py
 
-# 4. Start the web server
+# Step 4: Start the web server
 cd app
 python -m uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Open **http://localhost:8000** in your browser.
+Open `http://localhost:8000` in your browser.
 
-> **Note:** If you skip Step 3 (no PDFs available), the system will still run the NLP + context validator pipeline. The LASA ML scoring requires the `models/lasa_classifier.pkl` artifact to exist.
+> **Note:** Step 3 is required to generate `models/lasa_classifier.pkl`. Without it, the `/analyze` and `/voice` endpoints will return a `RuntimeError`. The NLP and context validation modules operate independently and do not require the trained model.
 
 ---
 
-## 🧪 Usage Examples
+## Usage
 
-### Via Web Interface
+### Web Interface
 
-Navigate to `http://localhost:8000/` and fill in the form:
+Navigate to `http://localhost:8000/`. The UI provides two input modes:
 
-| Field | Example Value |
+**Text Mode**
+
+| Field | Example |
 |:---|:---|
-| **Clinical Text** | `"Administer 25mg hydroxyzine IV for patient anxiety"` |
-| **Patient Diagnosis** | `anxiety` |
+| Clinical Text | `Administer 25mg hydroxyzine IV for patient anxiety` |
+| Patient Diagnosis | `anxiety` |
+
+**Voice Mode**
+
+Upload a `.wav` or `.mp3` audio file. The system transcribes it via Whisper, extracts the drug name, and returns a full risk analysis alongside the raw transcript.
 
 ---
 
-### Example 1: ✅ Safe Prescription (LOW Risk)
+### Usage Examples
 
-**Input:**
+#### Example 1: Safe Prescription (Low Risk)
+
 ```
 Text:      "Push 500mg of metformin immediately."
 Diagnosis: diabetes
 ```
 
-**Expected JSON Response:**
+**Response:**
+
 ```json
 {
   "status": "ok",
@@ -230,25 +315,27 @@ Diagnosis: diabetes
     "top_match": "methergine",
     "lasa_prob": 0.9912,
     "mismatch": false,
-    "message": "✅ Safe to administer. No significant LASA risk or context mismatch detected.",
-    "reasons": ["Base model probability calculated at 99%."]
+    "message": "Safe to administer. No significant LASA risk or context mismatch detected.",
+    "reasons": [
+      "Base model probability calculated at 99%."
+    ]
   }
 }
 ```
 
-> **Why LOW despite 99% similarity?** The model found that `metformin` and `methergine` are phonetically similar, but because `metformin` (an antidiabetic) is validated for the `diabetes` diagnosis with no context mismatch, the decision engine correctly suppresses the alert. This prevents *alert fatigue*.
+**Explanation:** The model identified `methergine` as the closest confusable name at 99% similarity. However, `metformin` (an antidiabetic) is validated against the `diabetes` diagnosis with no mismatch. The decision engine correctly returns LOW risk — a 99% similarity score alone is not sufficient to generate an actionable alert when clinical context confirms the drug is appropriate. This is intentional: the system is designed to suppress non-actionable alerts and prevent alert fatigue.
 
 ---
 
-### Example 2: ⚠️ Context Mismatch (HIGH Risk)
+#### Example 2: Context Mismatch — High Risk
 
-**Input:**
 ```
 Text:      "Start a drip of hydralazine."
 Diagnosis: anxiety
 ```
 
-**Expected JSON Response:**
+**Response:**
+
 ```json
 {
   "status": "ok",
@@ -263,7 +350,7 @@ Diagnosis: anxiety
     "top_match": "hydroxyzine",
     "lasa_prob": 0.9741,
     "mismatch": true,
-    "message": "⚠ Caution: Potential LASA confusion with 'hydroxyzine' (Similarity score: 99%).",
+    "message": "Caution: Potential LASA confusion with 'hydroxyzine' (Similarity score: 99%).",
     "reasons": [
       "High phonetic similarity matches found.",
       "96% high string similarity index.",
@@ -274,11 +361,11 @@ Diagnosis: anxiety
 }
 ```
 
-> **Why HIGH?** The NLP extracted `hydralazine`. The LASA engine found `hydroxyzine` at 97% similarity (a known ISMP pair). Crucially, the Patient Context Validator flagged that `hydralazine` is an **antihypertensive** — not an anxiety treatment — triggering the full HIGH risk alert with multi-signal explainability output.
+**Explanation:** Two independent signals both fire. First, the LASA engine scores `hydroxyzine` at 97% similarity — a known ISMP-documented confusion pair. Second, the context validator identifies that `hydralazine` (an antihypertensive) is pharmacologically inconsistent with an `anxiety` diagnosis. Both signals are surfaced individually in the `reasons` array, giving the reviewing clinician full transparency into why the alert was generated.
 
 ---
 
-### Example 3: Via REST API (curl)
+#### Example 3: REST API (curl)
 
 ```bash
 curl -X POST "http://localhost:8000/analyze" \
@@ -286,40 +373,40 @@ curl -X POST "http://localhost:8000/analyze" \
      -F "diagnosis=cancer"
 ```
 
-### Example 4: Voice Input
-
-Upload a `.wav` or `.mp3` audio file via the `/voice` endpoint:
+#### Example 4: Voice Input (API)
 
 ```bash
 curl -X POST "http://localhost:8000/voice" \
-     -F "file=@prescription_audio.wav" \
+     -F "file=@prescription_note.wav" \
      -F "diagnosis=cardiac_arrest"
 ```
 
-The system will transcribe the audio using **OpenAI Whisper** (or the mock fallback), extract the drug name, and return a full risk analysis.
-
 ---
 
-## 📖 API Reference
+## API Reference
 
 ### Endpoints
 
 | Method | Endpoint | Description |
 |:---|:---|:---|
-| `GET` | `/` | Serves the dark-themed HTML frontend |
-| `POST` | `/analyze` | Analyzes text input for LASA risk |
-| `POST` | `/voice` | Accepts audio upload → transcribes → analyzes |
+| `GET` | `/` | Serves the Jinja2-rendered HTML frontend |
+| `POST` | `/analyze` | Text analysis — extracts drug name and returns LASA risk assessment |
+| `POST` | `/voice` | Audio upload — transcribes, extracts, and returns LASA risk assessment |
+
+Interactive API documentation is auto-generated at `http://localhost:8000/docs` (Swagger UI) and `http://localhost:8000/redoc`.
 
 ---
 
-### `POST /analyze` — Request (form-data)
+### POST /analyze
+
+**Request** (multipart/form-data)
 
 | Field | Type | Required | Description |
 |:---|:---|:---|:---|
-| `text` | `string` | ✅ Yes | Clinical sentence or drug name to analyze |
-| `diagnosis` | `string` | ❌ Optional | Patient diagnosis for context validation |
+| `text` | string | Yes | Clinical sentence or drug name |
+| `diagnosis` | string | No | Patient diagnosis for context validation |
 
-### `POST /analyze` — Response Schema
+**Response Schema**
 
 ```json
 {
@@ -332,10 +419,10 @@ The system will transcribe the audio using **OpenAI Whisper** (or the mock fallb
   },
   "decision": {
     "risk_level": "LOW | MEDIUM | HIGH",
-    "lasa_prob": "<float 0–1>",
+    "lasa_prob": "<float, 0-1>",
     "top_match": "<most similar drug name>",
     "mismatch": "<boolean>",
-    "message": "<human readable warning>",
+    "message": "<human-readable warning string>",
     "reasons": ["<list of explanation strings>"],
     "details": {
       "top_lasa_hits": ["<top 5 hit objects>"],
@@ -354,7 +441,17 @@ The system will transcribe the audio using **OpenAI Whisper** (or the mock fallb
       "lasa_prob": "<float>",
       "risk_level": "LOW | MEDIUM | HIGH",
       "known_in_ismp": "<boolean>",
-      "features": { "<9 feature key-value pairs>" }
+      "features": {
+        "levenshtein_norm": "<float>",
+        "jaro_winkler": "<float>",
+        "token_sort_ratio": "<float>",
+        "ngram_bigram": "<float>",
+        "ngram_trigram": "<float>",
+        "soundex_match": "<0 or 1>",
+        "metaphone_match": "<0 or 1>",
+        "prefix5_match": "<0 or 1>",
+        "length_ratio": "<float>"
+      }
     }
   ]
 }
@@ -362,140 +459,161 @@ The system will transcribe the audio using **OpenAI Whisper** (or the mock fallb
 
 ---
 
-### `POST /voice` — Request (multipart/form-data)
+### POST /voice
+
+**Request** (multipart/form-data)
 
 | Field | Type | Required | Description |
 |:---|:---|:---|:---|
-| `file` | `UploadFile` | ✅ Yes | Audio file (`.wav`, `.mp3`, or any format Whisper supports) |
-| `diagnosis` | `string` | ❌ Optional | Patient diagnosis for context validation |
+| `file` | UploadFile | Yes | Audio file (`.wav`, `.mp3`, or any format supported by Whisper) |
+| `diagnosis` | string | No | Patient diagnosis for context validation |
 
-### `POST /voice` — Response Schema
+**Response Schema**
 
-Same as `/analyze` response, with one additional top-level field:
+Identical to `/analyze`, with one additional top-level field:
 
 ```json
 {
   "status": "ok",
   "transcript": "<Whisper transcription text>",
-  "drug": "<extracted drug name>",
-  "extracted": { "...": "..." },
-  "decision": { "...": "..." },
+  "drug": "...",
+  "extracted": { "..." : "..." },
+  "decision": { "..." : "..." },
   "lasa_hits": ["..."]
 }
 ```
 
-> **Note:** When Whisper is not installed, the module gracefully falls back to a mock implementation that echoes the audio filename as the transcript, so the rest of the pipeline still functions for integration testing.
+**Note on Whisper availability:** If `openai-whisper` is not installed, the module falls back to a mock implementation that returns the audio filename as the transcript text. The rest of the pipeline — NLP extraction, LASA scoring, context validation — continues to function normally.
 
 ---
 
-## ⚖️ Risk Level Logic
+## Risk Scoring Logic
 
-The decision engine uses **context-aware, multi-signal risk stratification** to prevent alert fatigue. Scores are computed as:
+The decision engine in `modules/08_decision_engine.py` does not rely on a single threshold. It aggregates four independent signals:
 
 ```
 adjusted_score = base_lasa_prob
-              + 0.15  (if drug is a known ISMP historical pair)
-              + 0.10  (if patient diagnosis mismatch detected)
-              + 0.05  (if STT confidence < 0.6)
+              + 0.15   if drug is a documented ISMP historical pair
+              + 0.10   if patient diagnosis mismatch is flagged
+              + 0.05   if STT transcription confidence < 0.60
+              (capped at 1.0)
 ```
 
-| Risk Level | Trigger Conditions |
-|:---|:---|
-| 🔴 **HIGH** | Diagnosis mismatch detected **AND** adjusted score > 0.75 |
-| 🟡 **MEDIUM** | Mismatch with score 0.45–0.75, **OR** known ISMP pair with score > 0.80, **OR** low STT confidence (< 0.8) with high score |
-| 🟢 **LOW** | No mismatch detected, or similarity below all thresholds |
+**Risk level assignment:**
 
-> **Key Design Decision:** A drug can score 99% LASA similarity and still return **LOW risk** if the prescribed drug is clinically appropriate for the patient's diagnosis. This mirrors how a real pharmacist would reason — flagging only *actionable* risks, not every phonetically similar name.
+| Risk Level | Conditions |
+|:---|:---|
+| HIGH | Diagnosis mismatch detected AND adjusted score > 0.75 |
+| MEDIUM | Mismatch with score in range (0.45, 0.75], OR known ISMP pair with score > 0.80, OR low STT confidence with high score |
+| LOW | No mismatch detected, or all scores below thresholds |
+
+**Design rationale:** The asymmetry between the HIGH and LOW branches is deliberate. A high LASA similarity score without a clinical context mismatch does not produce a HIGH alert — because a drug that is phonetically similar to another but appropriate for the patient's condition is not a dangerous substitution in context. The system rewards validated clinical intent and penalizes only combinations of similarity *and* contextual inappropriateness. This mirrors how a pharmacist would actually reason through a LASA pair.
 
 ---
 
-## 📊 Model Performance
+## Model Performance
 
-The best classifier (chosen automatically between Random Forest and Gradient Boosting by AUC-ROC) is evaluated on a stratified 80/20 held-out test set:
+Both `RandomForestClassifier` and `GradientBoostingClassifier` are trained on every pipeline run. The one with the higher AUC-ROC on the stratified 20% held-out test set is serialized to `models/lasa_classifier.pkl`.
 
-| Metric | Score |
+**Held-out test set performance (best model):**
+
+| Metric | Value |
 |:---|:---|
-| **AUC-ROC** | ~0.97 |
-| **Accuracy** | ~92% |
-| **Precision (LASA=1)** | ~91% |
-| **Recall (LASA=1)** | ~93% |
-| **F1-Score** | ~92% |
+| AUC-ROC | ~0.97 |
+| Accuracy | ~92% |
+| Precision (LASA = 1) | ~91% |
+| Recall (LASA = 1) | ~93% |
+| F1-Score | ~92% |
 
-**Baseline comparison:** A simple Jaro-Winkler threshold (> 0.85) was used as a fuzzy-matching baseline. The ML ensemble significantly outperforms it by incorporating phonetic and n-gram signals.
+**Baseline comparison:**
 
-**Top-3 most predictive features** (by Gini importance):
+A simple Jaro-Winkler threshold rule (flag if score > 0.85) was used as a fuzzy-matching baseline. The ML ensemble outperforms it substantially by incorporating phonetic encoding and structural features that a single continuous distance metric cannot capture — particularly for pairs that are phonetically similar but orthographically distinct (e.g., `morphine` vs. `hydromorphone`).
 
-1. `levenshtein_norm` — Normalized edit distance (higher = more similar)
-2. `jaro_winkler` — WRatio character alignment score (via `rapidfuzz`)
-3. `metaphone_match` — Phonetic Double Metaphone encoding match
+**Feature importances (approximate, by Gini impurity):**
 
-A **confusion matrix plot** is automatically saved to `models/confusion_matrix.png` after each training run.
+| Rank | Feature | Contribution |
+|:---|:---|:---|
+| 1 | `levenshtein_norm` | Highest — captures raw character-level edit proximity |
+| 2 | `jaro_winkler` | Strong — rewards prefix matches common in drug names |
+| 3 | `metaphone_match` | Strong — phonetic equivalence is a direct LASA risk signal |
+| 4 | `ngram_bigram` | Moderate — captures shared substrings |
+| 5 | `soundex_match` | Moderate — broader phonetic bucketing |
+
+A confusion matrix is automatically saved to `models/confusion_matrix.png` after each training run.
 
 ---
 
-## 🛠 Tech Stack
+## Feature Engineering
 
-### Core AI / ML
+Nine similarity features are computed for every drug pair `(A, B)` during training (in `modules/02_feature_engineering.py`) and at inference time (in `modules/modules_utils.py`). All features are computed in lowercase.
+
+| Feature | Formula / Method | Type | Range |
+|:---|:---|:---|:---|
+| `levenshtein_norm` | `1 - edit_distance(A, B) / max(len(A), len(B))` | Continuous | 0 – 1 |
+| `jaro_winkler` | `rapidfuzz.fuzz.WRatio(A, B) / 100` | Continuous | 0 – 1 |
+| `token_sort_ratio` | `rapidfuzz.fuzz.token_sort_ratio(A, B) / 100` | Continuous | 0 – 1 |
+| `ngram_bigram` | Jaccard index of character bigram sets of A and B | Continuous | 0 – 1 |
+| `ngram_trigram` | Jaccard index of character trigram sets of A and B | Continuous | 0 – 1 |
+| `soundex_match` | `int(jellyfish.soundex(A) == jellyfish.soundex(B))` | Binary | 0 or 1 |
+| `metaphone_match` | `int(jellyfish.metaphone(A) == jellyfish.metaphone(B))` | Binary | 0 or 1 |
+| `prefix5_match` | `int(A[:5] == B[:5])` | Binary | 0 or 1 |
+| `length_ratio` | `min(len(A), len(B)) / max(len(A), len(B))` | Continuous | 0 – 1 |
+
+**Why this feature set?**
+
+Drug name confusability operates on at least three distinct dimensions simultaneously:
+
+1. **Orthographic similarity** — how similarly the names are spelled (`levenshtein_norm`, `ngram_bigram`, `ngram_trigram`, `prefix5_match`, `length_ratio`)
+2. **Phonetic similarity** — how similarly the names are pronounced (`soundex_match`, `metaphone_match`)
+3. **Fuzzy string alignment** — how a human (or OCR system) might partially match or transpose them (`jaro_winkler`, `token_sort_ratio`)
+
+No single feature from any one dimension is sufficient. A pair like `clonidine` / `clonazepam` scores high on prefix match but low on phonetic encoding. A pair like `morphine` / `hydromorphone` scores low on prefix match but high on n-gram overlap. The ensemble model learns the combined decision boundary across all nine dimensions.
+
+---
+
+## Tech Stack
+
+### Machine Learning and Data
 
 | Library | Version | Role |
 |:---|:---|:---|
-| `scikit-learn` | 1.x | Random Forest + Gradient Boosting classifiers, stratified train/test split |
-| `pandas` | 2.x | Tabular data manipulation, feature matrix construction |
+| `scikit-learn` | 1.x | RandomForestClassifier, GradientBoostingClassifier, train/test split, evaluation metrics |
+| `pandas` | 2.x | Feature matrix construction, CSV I/O |
 | `numpy` | 1.x | Numerical computation |
-| `joblib` | 1.x | Model serialization / deserialization (`.pkl` artifact) |
+| `joblib` | 1.x | Model serialization and deserialization |
+| `tqdm` | 4.x | Progress reporting during pipeline processing |
 
-### NLP & String Similarity
+### NLP and String Similarity
 
 | Library | Version | Role |
 |:---|:---|:---|
 | `rapidfuzz` | 3.x | Levenshtein distance, WRatio, Token Sort Ratio |
-| `jellyfish` | 0.x | Soundex + Double Metaphone phonetic encoding |
-| `pdfplumber` | 0.x | PDF table/text extraction for ISMP drug pair parsing |
-| `openai-whisper` | 1.x | Speech-to-text transcription (optional, graceful mock fallback) |
-| `soundfile` | 0.x | Audio file I/O (required by Whisper) |
-| `tqdm` | 4.x | Progress bars during pipeline processing |
+| `jellyfish` | 0.x | Soundex and Double Metaphone phonetic encoding |
+| `pdfplumber` | 0.x | PDF text and table extraction for ISMP source documents |
+| `openai-whisper` | 1.x | Speech-to-text transcription (optional) |
+| `soundfile` | 0.x | Audio file I/O dependency for Whisper |
 
-### Web & Serving
-
-| Library | Version | Role |
-|:---|:---|:---|
-| `fastapi` | 0.135 | REST API framework with automatic OpenAPI docs at `/docs` |
-| `uvicorn` | 0.x | ASGI production server |
-| `jinja2` | 3.x | HTML template rendering |
-| `python-multipart` | 0.x | Multipart form + audio file upload parsing |
-
-### Visualization (Training Phase)
+### Web and Serving
 
 | Library | Version | Role |
 |:---|:---|:---|
-| `matplotlib` | 3.x | Confusion matrix plot (saved to `models/confusion_matrix.png`) |
-| `seaborn` | 0.x | Correlation heatmaps (EDA notebooks) |
+| `fastapi` | 0.135 | REST API framework with automatic OpenAPI documentation |
+| `uvicorn` | 0.x | ASGI server |
+| `jinja2` | 3.x | Server-side HTML template rendering |
+| `python-multipart` | 0.x | Form and file upload parsing |
 
----
+### Visualization
 
-## 🧬 Feature Engineering Details
-
-Nine similarity features are computed for every drug pair `(A, B)` in `modules/02_feature_engineering.py` and shared via `modules_utils.py` for real-time inference:
-
-| Feature | Formula / Method | Range |
+| Library | Version | Role |
 |:---|:---|:---|
-| `levenshtein_norm` | `1 - edit_distance(A,B) / max(len(A), len(B))` | 0–1 |
-| `jaro_winkler` | `rapidfuzz.fuzz.WRatio(A, B) / 100` | 0–1 |
-| `token_sort_ratio` | `rapidfuzz.fuzz.token_sort_ratio(A, B) / 100` | 0–1 |
-| `ngram_bigram` | Jaccard overlap of character bigram sets | 0–1 |
-| `ngram_trigram` | Jaccard overlap of character trigram sets | 0–1 |
-| `soundex_match` | `int(jellyfish.soundex(A) == jellyfish.soundex(B))` | 0 or 1 |
-| `metaphone_match` | `int(jellyfish.metaphone(A) == jellyfish.metaphone(B))` | 0 or 1 |
-| `prefix5_match` | `int(A[:5] == B[:5])` | 0 or 1 |
-| `length_ratio` | `min(len(A), len(B)) / max(len(A), len(B))` | 0–1 |
-
-> **Why 9 features?** Combining character-level (Levenshtein), token-level (WRatio, Token Sort), phonetic (Soundex, Metaphone), and structural (prefix, length) signals gives the model diverse, complementary evidence — individual signals alone are insufficient for clinical-grade accuracy.
+| `matplotlib` | 3.x | Confusion matrix plot generation |
+| `seaborn` | 0.x | Heatmaps and correlation analysis (EDA notebooks) |
 
 ---
 
-## 🧭 Supported Diagnoses (Context Validation)
+## Supported Diagnoses
 
-The patient context validator in `modules/07_patient_context.py` maps diagnoses to expected drug classes. Prescribing a drug outside its expected class triggers the mismatch flag:
+The Patient Context Validator (`modules/07_patient_context.py`) maps diagnoses to expected pharmacological drug classes. A prescription flagged as a mismatch means the drug's class is not in the expected class list for that diagnosis.
 
 | Diagnosis | Expected Drug Classes |
 |:---|:---|
@@ -512,74 +630,119 @@ The patient context validator in `modules/07_patient_context.py` maps diagnoses 
 | `inflammation` | corticosteroid, nsaid |
 | `heart_failure` | vasopressor, inotropic, beta_blocker, diuretic, antihypertensive |
 
-> To extend the taxonomy, add entries to `DRUG_CLASS_MAP` and `DIAGNOSIS_CLASS_MAP` in `modules/07_patient_context.py`. No retraining is required — the context validator runs independently of the ML model.
+To extend the taxonomy, add entries to `DRUG_CLASS_MAP` and `DIAGNOSIS_CLASS_MAP` in `modules/07_patient_context.py`. No model retraining is required — the context validator is a rule-based module independent of the ML pipeline.
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-No configuration file is required. All paths are resolved relative to the project root at runtime. To override key paths, edit these constants directly:
+No configuration file is required. All paths resolve relative to the project root at runtime. To override the defaults, edit the following constants:
+
+**`modules/04_lasa_engine.py` and `app/app.py`:**
 
 ```python
-# In modules/04_lasa_engine.py (and mirrored in app/app.py)
-DRUG_LIST_PATH = "data/drug_list.txt"          # Master drug list (one drug per line)
-MODEL_PATH     = "models/lasa_classifier.pkl"  # Trained model artifact (joblib dict)
-DRUG_PAIRS     = "data/processed/drug_pairs.csv"  # ISMP positive pairs for ISMP boost
+DRUG_LIST_PATH = "data/drug_list.txt"              # One drug name per line
+MODEL_PATH     = "models/lasa_classifier.pkl"       # Serialized joblib artifact
+DRUG_PAIRS     = "data/processed/drug_pairs.csv"    # ISMP pairs for ISMP-boost scoring
 ```
 
-The serialized model artifact is a **Python dict** with keys: `model`, `feature_cols`, `model_name`, `auc` — so you can inspect or swap the underlying estimator without retraining.
+**Model artifact structure:**
+
+The `.pkl` file is a Python dict with the following keys:
+
+```python
+{
+    "model":        <fitted sklearn estimator>,
+    "feature_cols": ["levenshtein_norm", "jaro_winkler", ...],   # 9 features in order
+    "model_name":   "RandomForest" | "GradientBoosting",
+    "auc":          <float>
+}
+```
+
+This structure allows you to inspect or swap the underlying estimator without modifying downstream inference code.
 
 ---
 
-## 🩺 Troubleshooting
+## Troubleshooting
 
-| Problem | Likely Cause | Fix |
+| Symptom | Likely Cause | Resolution |
 |:---|:---|:---|
-| `RuntimeError: Model not trained yet` | `models/lasa_classifier.pkl` missing | Run `python run_all.py` to train the model |
-| `ModuleNotFoundError: No module named 'whisper'` | Whisper not installed | Run `pip install openai-whisper`; the system will use a mock STT fallback in its absence |
-| `500 Internal Server Error` on `/analyze` | Drug extraction returns empty string | Ensure input contains a recognizable drug name; check `modules/05_nlp_drug_extractor.py` dictionary |
-| `pdfplumber` extracts no pairs | ISMP PDF format changed | Run `python test_pdf.py` to verify parseable tables; update selectors in `01_data_preprocessing.py` |
-| Port already in use | Another process on port 8000 | Use `--port 8001` with uvicorn, or terminate the conflicting process |
-| No diagnosis mismatch flagged | Drug not in `DRUG_CLASS_MAP` | Add the drug → class mapping in `modules/07_patient_context.py` |
+| `RuntimeError: Model not trained yet` | `models/lasa_classifier.pkl` does not exist | Run `python run_all.py` to execute the full training pipeline |
+| `ModuleNotFoundError: No module named 'whisper'` | Whisper not installed | Run `pip install openai-whisper`; the system uses a mock STT fallback automatically |
+| HTTP 500 on `/analyze` | Empty drug extraction result | Ensure input contains a recognizable drug name; inspect `modules/05_nlp_drug_extractor.py` dictionary |
+| `pdfplumber` extracts zero pairs | ISMP PDF format changed | Run `python test_pdf.py` to verify table structure; update selectors in `01_data_preprocessing.py` |
+| Port already in use | Process already bound to port 8000 | Add `--port 8001` to the uvicorn command, or kill the conflicting process |
+| No mismatch flagged for an incorrect drug | Drug absent from `DRUG_CLASS_MAP` | Add the mapping (`drug_name: drug_class`) in `modules/07_patient_context.py` |
+| Low recall on custom drug list | Training set does not cover new drugs | Add pairs to `drug_pairs.csv`, recompute features, retrain with `python modules/03_model_training.py` |
 
 ---
 
-## 🔬 Research Background
+## Future Improvements
 
-This system implements concepts from published literature on medication safety systems:
+The following extensions would meaningfully increase the system's clinical utility and research validity:
 
-- **ISMP (2023)** — *ISMP List of Confused Drug Names* — Primary dataset source for positive LASA pairs
-- **Cohen MR (1999)** — *Medication Errors* — Foundational taxonomy of LASA error types and severity classification
-- **Bates DW et al. (1995)** — *Incidence of Adverse Drug Events and Potential Adverse Drug Events* — Statistical grounding for error frequency estimates
-- Feature engineering methodology inspired by clinical NLP research on named entity recognition in electronic health records and discharge summaries
+| Improvement | Description | Priority |
+|:---|:---|:---|
+| **Transformer-based drug NER** | Replace regex extraction with a fine-tuned BioBERT or ClinicalBERT NER model trained on i2b2 or n2c2 datasets | High |
+| **SNOMED-CT / RxNorm integration** | Replace the custom drug taxonomy with standardized medical ontologies for diagnosis-class mapping | High |
+| **Expanded drug list** | Incorporate the full FDA-approved drug database (~20,000+ entries) for comprehensive coverage | High |
+| **Confidence calibration** | Apply Platt scaling or isotonic regression to convert raw model probabilities to calibrated confidence estimates | Medium |
+| **Real-time microphone input** | Replace file-upload voice mode with WebSocket-based streaming audio for live LASA checking during verbal orders | Medium |
+| **EHR integration layer** | Add FHIR R4 API compatibility to enable direct integration with hospital EHR systems | Medium |
+| **Audit logging** | Persist every query, extracted drug, and risk decision to a structured database for retrospective analysis | Medium |
+| **Active learning loop** | Collect pharmacist overrides of alerts and use them as labeled feedback to retrain the model | Low |
+| **Multi-language support** | Extend STT and NLP to non-English clinical contexts using multilingual Whisper and translated drug taxonomies | Low |
 
 ---
 
-## 🤝 Contributing
+## Research Background
+
+This system implements and validates concepts from the published medication safety literature:
+
+- **ISMP (2023).** *ISMP List of Confused Drug Names.* Institute for Safe Medication Practices. — Primary source for positive LASA pair labels.
+- **Cohen MR (1999).** *Medication Errors.* American Pharmaceutical Association. — Foundational taxonomy of LASA error types and severity classification.
+- **Bates DW et al. (1995).** Incidence of adverse drug events and potential adverse drug events. *JAMA, 274*(1), 29–34. — Statistical grounding for medication error frequency estimates.
+- **Winkler WE (1990).** String comparator metrics and enhanced decision rules in the Fellegi-Sunter model of record linkage. — Theoretical basis for the Jaro-Winkler metric used in feature engineering.
+- Feature engineering methodology informed by clinical NLP research on drug name recognition in electronic health records and discharge summaries.
+
+---
+
+## Contributing
+
+Contributions are welcome. To propose a change:
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/add-new-drug-class`
-3. Commit your changes: `git commit -m "Add oncology drug taxonomy"`
-4. Push to the branch and open a Pull Request
+2. Create a feature branch: `git checkout -b feature/your-feature-name`
+3. Commit your changes with a descriptive message
+4. Push to your fork and open a Pull Request against `main`
 
-**To extend the system:**
-- **New drugs:** Add to `data/drug_list.txt` (one drug per line)
-- **New LASA pairs:** Add rows to `data/processed/drug_pairs.csv` (`drug1, drug2, label`), then retrain with `python modules/03_model_training.py`
-- **New drug-class mappings:** Edit `DRUG_CLASS_MAP` in `modules/07_patient_context.py`
-- **New diagnosis contexts:** Edit `DIAGNOSIS_CLASS_MAP` in `modules/07_patient_context.py`
+**Common contribution areas:**
+
+- Additional drug-class mappings in `modules/07_patient_context.py`
+- New drugs in `data/drug_list.txt` (one per line, lowercase)
+- New LASA pairs in `data/processed/drug_pairs.csv` (columns: `drug1`, `drug2`, `label`); rerun `python modules/03_model_training.py` after adding pairs
+- Bug reports with a minimal reproducible example
+
+Please keep all contributions focused on correctness and clinical plausibility. This is a medical safety project — speculative or unvalidated additions to the drug taxonomy should be flagged clearly in the PR description.
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
-> This system is intended **solely for educational and research purposes**. It has not been validated for clinical use, is not FDA-cleared, and must **not** be used as the sole basis for any medication administration decision. Always follow institutional protocols and consult a licensed pharmacist or physician.
+This system is provided **for educational and research purposes only**.
+
+It has **not** been clinically validated, is **not** FDA-cleared or CE-marked, and has **not** undergone the regulatory review required for medical device software. It must **not** be used as the sole basis for any medication prescribing, dispensing, or administration decision in a clinical environment.
+
+All outputs produced by this system — including risk levels, alerts, and reasons — are experimental and may be incorrect. Drug safety decisions must always be made by licensed healthcare professionals following institutional protocols, formulary guidelines, and direct patient assessment.
+
+The authors assume no liability for any clinical outcome arising from the use or misuse of this software.
 
 ---
 
 <div align="center">
 
-**Built with ❤️ for patient safety by Saptarshi Sadhu**
+Built for patient safety research.
 
-*Reducing LASA medication errors through intelligent clinical decision support*
+*The best medication error is the one that never reaches the patient.*
 
 </div>
