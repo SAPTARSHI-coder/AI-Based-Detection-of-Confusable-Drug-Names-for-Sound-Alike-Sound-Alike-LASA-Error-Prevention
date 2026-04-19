@@ -12,6 +12,8 @@
 
 *A modular, explainable AI system that identifies phonetically and orthographically similar drug name pairs at the point of care — before a dangerous substitution reaches the patient.*
 
+**🌐 Live Demo:** [https://ai-based-detection-of-confusable-drug.onrender.com/](https://ai-based-detection-of-confusable-drug.onrender.com/)
+
 </div>
 
 ---
